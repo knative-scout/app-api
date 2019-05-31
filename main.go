@@ -8,6 +8,8 @@ import (
 	
 	"github.com/Noah-Huppert/golog"
 	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func main() {
@@ -34,6 +36,16 @@ func main() {
 		logger.Fatalf("failed to load configuration: %s", err.Error())
 	}
 
+	// {{{1 MongoDB
+	mdb, err := mongo.Connect(ctx, options.Client().ApplyURI(config.DBConnURL))
+	if err != nil {
+		logger.Fatalf("failed to connect to database: %s", err.Error())
+	}
+
+	if err := mdb.Ping(ctx, nil); err != nil {
+		logger.Fatalf("failed to test datbase connection: %s", err.Error())
+	}
+	
 	// {{{1 Router
 	router := mux.NewRouter()
 
