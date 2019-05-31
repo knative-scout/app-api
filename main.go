@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/signal"
 	"net/http"
+
+	"github.com/knative-scout/app-api/handlers"
 	
 	"github.com/Noah-Huppert/golog"
 	"github.com/gorilla/mux"
@@ -37,16 +39,22 @@ func main() {
 	}
 
 	// {{{1 MongoDB
-	mdb, err := mongo.Connect(ctx, options.Client().ApplyURI(config.DBConnURL))
+	mDb, err := mongo.Connect(ctx, options.Client().ApplyURI(config.DBConnURL))
 	if err != nil {
 		logger.Fatalf("failed to connect to database: %s", err.Error())
 	}
 
-	if err := mdb.Ping(ctx, nil); err != nil {
+	if err := mDb.Ping(ctx, nil); err != nil {
 		logger.Fatalf("failed to test datbase connection: %s", err.Error())
 	}
 	
 	// {{{1 Router
+	_ = handlers.Handler{
+		Ctx: ctx,
+		Logger: logger,
+		MDb: mDb,
+	}
+
 	router := mux.NewRouter()
 
 	// {{{1 Start HTTP server
