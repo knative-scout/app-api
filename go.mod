@@ -6,6 +6,7 @@ require (
 	github.com/Noah-Huppert/golog v0.0.0-20180826190739-0531f7300f66
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
+	github.com/gorilla/handlers v1.4.0
 	github.com/gorilla/mux v1.7.2
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c // indirect

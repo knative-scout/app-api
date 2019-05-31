@@ -7,9 +7,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// Handler provides helper methods and commonly used variables for API endpoints to base
+// BaseHandler provides helper methods and commonly used variables for API endpoints to base
 // their http.Handlers off
-type Handler struct {
+type BaseHandler struct {
 	// Ctx is the application context
 	Ctx context.Context
 

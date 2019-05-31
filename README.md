@@ -7,7 +7,7 @@ API which manages applications.
 - [Deployment](#deployment)
 
 # Overview
-Design TBD.
+See [DESIGN.md](DESIGN.md)
 
 # Development
 Written in Go using the native HTTP library.  

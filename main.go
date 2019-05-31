@@ -49,18 +49,25 @@ func main() {
 	}
 	
 	// {{{1 Router
-	_ = handlers.Handler{
+	baseHandler := handlers.BaseHandler{
 		Ctx: ctx,
-		Logger: logger,
+		Logger: logger.GetChild("handlers"),
 		MDb: mDb,
 	}
 
 	router := mux.NewRouter()
 
-	// {{{1 Start HTTP server
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		panic("panicing dude")
+	})
+
+	// {{{1 Start HTTP server	
 	server := http.Server{
 		Addr: config.HTTPAddr,
-		Handler: router,
+		Handler: handlers.PanicHandler{
+			BaseHandler: baseHandler,
+			Handler: router,
+		},
 	}
 
 	go func() {
