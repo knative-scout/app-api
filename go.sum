@@ -1,0 +1,6 @@
+github.com/Noah-Huppert/golog v0.0.0-20180826190739-0531f7300f66 h1:083LqAbdMKN4WwRhXCmSLlZLufFDjJvnOeS7rfOkQaU=
+github.com/Noah-Huppert/golog v0.0.0-20180826190739-0531f7300f66/go.mod h1:/7tGsz23F0YQyA1ulScodsNswVz6Ntf0SU2F9TvAJME=
+github.com/gorilla/mux v1.7.2 h1:zoNxOV7WjqXptQOVngLmcSQgXmgk4NMz1HibBchjl/I=
+github.com/gorilla/mux v1.7.2/go.mod h1:1lud6UwP+6orDFRuTfBEV8e9/aOM/c4fVVCaMa2zaAs=
+github.com/kelseyhightower/envconfig v1.4.0 h1:Im6hONhd3pLkfDFsbRgu68RDNkGF1r3dvMUtDTo2cv8=
+github.com/kelseyhightower/envconfig v1.4.0/go.mod h1:cccZRl6mQpaq41TPp5QxidR+Sa3axMbJDNb//FQX6Gg=
