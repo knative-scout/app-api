@@ -38,7 +38,7 @@ Schema:
 - `logo_url` (String)
 - `tags` (List[String])
 - `verification_status` (String): One of `pending`, `verifying`, `good`, `bad`
-- `github_link` (String)
+- `github_url` (String)
 - `version` (String)
 - `author` (String)
 - `maintainer` (String)
