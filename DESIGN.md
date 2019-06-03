@@ -15,14 +15,6 @@ will be passed via URL and query parameters.
 Responses will always return JSON.
 
 # Data Model
-## User Model
-`users` collection.
-
-Schema:
-
-- `username` (String)
-- `profile_picture` (String): Binary image data
-  
 ## App Model
 `apps` collection.
 
