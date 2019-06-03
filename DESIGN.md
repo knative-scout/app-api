@@ -49,6 +49,9 @@ Most endpoints to not require authentication.
 Those which do will be marked. Provide authentication as a bearer token in the
 `Authorization` header.  
 
+Endpoints which specify a response of `None` will return the 
+JSON: `{"ok": true}`.
+
 ## App Endpoints
 ### Search Apps
 `GET /apps?query=<query>&tags=<tags>&categories=<categories>`
@@ -145,3 +148,13 @@ Request:
 Response:
 
 - `instructions` (String)
+
+## Meta Endpoints
+### Health Check
+`GET /health`
+
+Used to determine if server is operating fully.
+
+Request: None
+
+Response: None
