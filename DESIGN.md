@@ -96,6 +96,33 @@ Request:
 
 Response: None
 
+### Search Tags
+`GET /apps/tags?query=<query>`
+
+Get all available tags.
+
+Request:
+
+- `query` (Optional, String): Search string, if empty all tags will be returned
+
+Response:
+
+- `tags` (List[String])
+
+### Search Categories
+`GET /apps/categories?query=<query>`
+
+Get all available categories.
+
+Request:
+
+- `query` (Optional, String): Search string, if empty all categories will 
+  be returned
+
+Response:
+
+- `categories` (List[String])
+
 ## User Endpoints
 `GET /users/login`
 
