@@ -67,6 +67,19 @@ Response:
 
 - `apps` (List[[App Model](#app-model)])
 
+### Get App By ID
+`GET /apps/<app_id>`
+
+Get application by ID.
+
+Request:
+
+- `app_id` (String)
+
+Response:
+
+- `app` ([App Model](#app-model))
+
 ## User Endpoints
 `GET /users/login`
 
