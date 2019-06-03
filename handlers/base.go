@@ -20,3 +20,11 @@ type BaseHandler struct {
 	MDb *mongo.Client
 }
 
+// GetChild makes a child instance of the base handler with a prefix
+func (h BaseHandler) GetChild(prefix string) {
+	return BaseHandler{
+		Ctx: h.Ctx,
+		Logger: h.Logger.GetChild(prefix),
+		MDb: h.MDb,
+	}
+}

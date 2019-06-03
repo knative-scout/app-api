@@ -62,7 +62,10 @@ func main() {
 		Addr: config.HTTPAddr,
 		Handler: handlers.PanicHandler{
 			BaseHandler: baseHandler,
-			Handler: router,
+			Handler: handlers.ReqLoggerHandler{
+				BaseHandler: baseHandler,
+				Handler: router,
+			},
 		},
 	}
 
