@@ -15,16 +15,6 @@ will be passed via URL and query parameters.
 Responses will always return JSON.
 
 # Data Model
-## User Model
-`users` collection.
-
-Schema:
-
-- `username` (String)
-- `profile_picture` (String): Binary image data
-- `cluster` (Object)
-  - `name`: Name of OpenShift cluster
-  
 ## App Model
 `apps` collection.
 
@@ -38,7 +28,7 @@ Schema:
 - `logo_url` (String)
 - `tags` (List[String])
 - `verification_status` (String): One of `pending`, `verifying`, `good`, `bad`
-- `github_link` (String)
+- `github_url` (String)
 - `version` (String)
 - `author` (String)
 - `maintainer` (String)
