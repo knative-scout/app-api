@@ -32,6 +32,7 @@ Schema:
 
 - `app_id` (String)
 - `name` (String)
+- `tagline` (String)
 - `description` (String)
 - `screenshot_urls` (List[String])
 - `logo_url` (String)
@@ -39,6 +40,8 @@ Schema:
 - `verification_status` (String): One of `pending`, `verifying`, `good`, `bad`
 - `github_link` (String)
 - `version` (String)
+- `author` (String)
+- `maintainer` (String)
 
 # Endpoints
 Most endpoints to not require authentication.  
@@ -48,13 +51,17 @@ Those which do will be marked. Provide authentication as a bearer token in the
 
 ## App Endpoints
 ### Search Apps
-`GET /apps?query=<query>`
+`GET /apps?query=<query>&tags=<tags>&categories=<categories>`
 
 Search serverless apps in hub.
 
+If no search parameters are provided all applications will be returned.
+
 Request:
 
-- `query` (String): Search string, if empty returns all apps
+- `query` (Optional, String): Natural language query
+- `tags` (Optional, List[String]): Tags applications must have
+- `categories` (Optional, List[String]): Categories applications must be part of
 
 Response:
 
