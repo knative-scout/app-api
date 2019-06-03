@@ -80,6 +80,19 @@ Response:
 
 - `app` ([App Model](#app-model))
 
+### App Pull Request Webhook Endpoint
+`POST /apps/webhook`
+
+GitHub will make a request to this endpoint every time a new pull request is 
+made to submit an app.
+
+Request:
+
+- [GitHub Webhook Request](https://developer.github.com/webhooks/#payloads)
+- [`PullRequestEvent'](https://developer.github.com/v3/activity/events/types/#pullrequestevent)
+
+Response: None
+
 ## User Endpoints
 `GET /users/login`
 
