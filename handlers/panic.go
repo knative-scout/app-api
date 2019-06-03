@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"runtime/debug"
 )
@@ -18,7 +19,11 @@ func (h PanicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {
 			h.Logger.Error(string(debug.Stack()))
-			h.Logger.Error("panicked while handling request:", r)			
+			h.Logger.Error("panicked while handling request:", r)
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintln(w, "{\"error\": \"internal server error\"}")
 		}
 	}()
 
