@@ -56,6 +56,10 @@ func main() {
 	}
 
 	router := mux.NewRouter()
+	
+	router.Handle("/health", handlers.HealthHandler{
+		baseHandler.GetChild("health"),
+	}).Methods("GET")
 
 	// {{{1 Start HTTP server	
 	server := http.Server{
