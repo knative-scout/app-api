@@ -21,7 +21,7 @@ type BaseHandler struct {
 }
 
 // GetChild makes a child instance of the base handler with a prefix
-func (h BaseHandler) GetChild(prefix string) {
+func (h BaseHandler) GetChild(prefix string) BaseHandler {
 	return BaseHandler{
 		Ctx: h.Ctx,
 		Logger: h.Logger.GetChild(prefix),
