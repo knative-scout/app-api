@@ -22,8 +22,6 @@ Schema:
 
 - `username` (String)
 - `profile_picture` (String): Binary image data
-- `cluster` (Object)
-  - `name`: Name of OpenShift cluster
   
 ## App Model
 `apps` collection.
