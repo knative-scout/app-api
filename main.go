@@ -57,10 +57,6 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		panic("panicing dude")
-	})
-
 	// {{{1 Start HTTP server	
 	server := http.Server{
 		Addr: config.HTTPAddr,
