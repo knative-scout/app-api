@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"context"
 	"net/http"
 	"encoding/json"
@@ -38,6 +39,14 @@ func (h BaseHandler) RespondJSON(w http.ResponseWriter, status int, resp interfa
 
 	encoder := json.NewEncoder(w)
 	if err := encoder.Encode(resp); err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to encode response as JSON: %s", err.Error()))
+	}
+}
+
+// ParseJSON parses a request body as JSON
+func (h BaseHandler) ParseJSON(r *http.Request, dest interface{}) {
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(dest); err != nil {
+		panic(fmt.Errorf("failed to decode request body as JSON: %s", err.Error()))
 	}
 }
