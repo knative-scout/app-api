@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"encoding/json"
+	
 	"github.com/kelseyhightower/envconfig"
 )
 
@@ -39,4 +41,23 @@ func NewConfig() (*Config, error) {
 	}
 
 	return &config, nil
+}
+
+// String returns a log safe version of Config in string form. Redacts any sensative fields.
+func (c Config) String() (string, error) {
+	if c.DbPassword != "" {
+		c.DbPassword = "REDACTED_NOT_EMPTY"
+	}
+
+	if c.GhToken != "" {
+		c.GhToken = "REDACTED_NOT_EMPTY"
+	}
+
+
+	configBytes, err := json.Marshal(c)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert configuration into JSON: %s", err.Error())
+	}
+
+	return string(configBytes), nil
 }

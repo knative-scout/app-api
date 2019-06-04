@@ -37,7 +37,13 @@ func main() {
 	// {{{1 Configuration
 	config, err := NewConfig()
 
-	logger.Debugf("loaded configuration: %#v", config)
+	configStr, err := config.String()
+	if err != nil {
+		logger.Fatalf("failed to convert configuration into string for debug log: %s",
+			err.Error())
+	}
+
+	logger.Debugf("loaded configuration: %s", configStr)
 
 	if err != nil {
 		logger.Fatalf("failed to load configuration: %s", err.Error())
