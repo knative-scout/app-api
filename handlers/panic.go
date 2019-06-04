@@ -7,6 +7,9 @@ import (
 )
 
 // PanicHandler runs another http.Handler and recovers from any panics which occur
+// Prevents server from crashing and recovers from panic.
+// Also prints stack trace for panic.
+
 type PanicHandler struct {
 	BaseHandler
 

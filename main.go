@@ -61,9 +61,11 @@ func main() {
 	}
 
 	if err := mDb.Ping(ctx, nil); err != nil {
-		logger.Fatalf("failed to test datbase connection: %s", err.Error())
+		logger.Fatalf("failed to test database connection: %s", err.Error())
 	}
-	
+
+	logger.Info("Connected to Mongo")
+
 	// {{{1 Router
 	baseHandler := handlers.BaseHandler{
 		Ctx: ctx,

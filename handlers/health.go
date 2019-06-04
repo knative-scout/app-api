@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-// HealthHandler is used to detemrine if the server is running
+// HealthHandler is used to determine if the server is running
 type HealthHandler struct {
 	BaseHandler
 }
