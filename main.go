@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/knative-scout/app-api/config"
 	"github.com/knative-scout/app-api/handlers"
 	
 	"github.com/Noah-Huppert/golog"
@@ -37,28 +38,28 @@ func main() {
 	logger.Debug("starting")
 
 	// {{{1 Configuration
-	config, err := NewConfig()
+	cfg, err := config.NewConfig()
 	if err != nil {
 		logger.Fatalf("failed to load configuration: %s", err.Error())
 	}
 
-	configStr, err := config.String()
+	cfgStr, err := cfg.String()
 	if err != nil {
 		logger.Fatalf("failed to convert configuration into string for debug log: %s",
 			err.Error())
 	}
 
-	logger.Debugf("loaded configuration: %s", configStr)
+	logger.Debugf("loaded configuration: %s", cfgStr)
 
 	// {{{1 MongoDB
 	// {{{2 Build connection options
 	mDbConnOpts := options.Client()
 	mDbConnOpts.SetAuth(options.Credential{
-		Username: config.DbUser,
-		Password: config.DbPassword,
+		Username: cfg.DbUser,
+		Password: cfg.DbPassword,
 	})
 	mDbConnOpts.SetHosts([]string{
-		fmt.Sprintf("%s:%d", config.DbHost, config.DbPort),
+		fmt.Sprintf("%s:%d", cfg.DbHost, cfg.DbPort),
 	})
 
 	if err = mDbConnOpts.Validate(); err != nil {
@@ -84,15 +85,15 @@ func main() {
 	logger.Debug("authenticating with GitHub API")
 	
 	ghTokenSrc := oauth2.StaticTokenSource(&oauth2.Token{
-		AccessToken: config.GhToken,
+		AccessToken: cfg.GhToken,
 	})
 	ghTokenClient := oauth2.NewClient(ctx, ghTokenSrc)
 	
 	gh := github.NewClient(ghTokenClient)
 
 	// {{{2 Ensure registry repository exists
-	_, _, err = gh.Repositories.Get(ctx, config.GhRegistryRepoOwner,
-		config.GhRegistryRepoName)
+	_, _, err = gh.Repositories.Get(ctx, cfg.GhRegistryRepoOwner,
+		cfg.GhRegistryRepoName)
 	if err != nil {
 		logger.Fatalf("failed to get information about serverless application "+
 			"registry repository: %s", err.Error())
@@ -118,7 +119,7 @@ func main() {
 	logger.Debug("starting HTTP server")
 	
 	server := http.Server{
-		Addr: config.HTTPAddr,
+		Addr: cfg.HTTPAddr,
 		Handler: handlers.PanicHandler{
 			BaseHandler: baseHandler,
 			Handler: handlers.ReqLoggerHandler{
@@ -134,7 +135,7 @@ func main() {
 		}
 	}()
 
-	logger.Infof("started server on %s", config.HTTPAddr)
+	logger.Infof("started server on %s", cfg.HTTPAddr)
 
 	<-ctx.Done()
 
