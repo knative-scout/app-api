@@ -10,6 +10,11 @@ API which manages applications.
 See [DESIGN.md](DESIGN.md)
 
 # Development
+The App API server can be run locally.  
+
+Follow the steps in the [Database](#database), [Configuration](#configuration),
+and [Run](#run) sections.
+
 ## Database
 Start a local MongoDB server by running:
 
@@ -18,9 +23,10 @@ make db
 ```
 
 ## Configuration
-The default values will work for local development.  
+For local development the default configuration values will suffice with the 
+exception `APP_GH_TOKEN`.
 
-Configuration is passed via environment variables:
+Configuration is passed via environment variables.
 
 - `APP_HTTP_ADDR` (String): Address to bind server, defaults to `:5000`
 - `APP_DB_HOST` (String): MongoDB host, defaults to `localhost`
@@ -42,19 +48,6 @@ Start the server by running:
 go run .
 ```
 
-## Temporary Open Shift
-The `tmpk` script wraps `kubectl` with the required arguments to connect to the
-48 hour Open Shift clusters.
-
-Set the `TMPK_TOKEN` and `TMPK_N` environment variables. See the `tmpk` file 
-for details about what to set these environment variables to.
-
-Use the `tmpk` script as if it was `kubectl`:
-
-```
-./tmpk get all
-```
-
 # Deployment
 ## Kubernetes
 Set the Mongo DB database password:
@@ -69,6 +62,19 @@ Deploy the API server and Mongo:
 
 ```
 make deploy
+```
+
+## Temporary Open Shift
+The `tmpk` script wraps `kubectl` with the required arguments to connect to the
+48 hour Open Shift clusters.
+
+Set the `TMPK_TOKEN` and `TMPK_N` environment variables. See the `tmpk` file 
+for details about what to set these environment variables to.
+
+Use the `tmpk` script as if it was `kubectl`:
+
+```
+./tmpk get all
 ```
 
 ## GitHub
