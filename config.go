@@ -24,6 +24,9 @@ type Config struct {
 
 	// DbName is the database to connect to inside MongoDB
 	DbName string `default:"knative-scout-app-api-dev" split_words:"true"`
+
+	// GhToken is a GitHub API token with repository read permissions
+	GhToken string `split_words:"true"`
 }
 
 // NewConfig loads configuration values from environment variables
