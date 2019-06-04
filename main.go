@@ -32,12 +32,21 @@ func main() {
 	// {{{1 Logger
 	logger := golog.NewStdLogger("app-api")
 
+	logger.Debug("starting")
+
 	// {{{1 Configuration
 	config, err := NewConfig()
-
 	if err != nil {
 		logger.Fatalf("failed to load configuration: %s", err.Error())
 	}
+
+	configStr, err := config.String()
+	if err != nil {
+		logger.Fatalf("failed to convert configuration into string for debug log: %s",
+			err.Error())
+	}
+
+	logger.Debugf("loaded configuration: %s", configStr)
 
 	// {{{1 MongoDB
 	// {{{2 Build connection options
@@ -55,6 +64,8 @@ func main() {
 	}
 
 	// {{{2 Connect
+	logger.Debug("connecting to DB")
+	
 	mDb, err := mongo.Connect(ctx, mDbConnOpts)
 	if err != nil {
 		logger.Fatalf("failed to connect to database: %s", err.Error())
@@ -79,7 +90,9 @@ func main() {
 		baseHandler.GetChild("health"),
 	}).Methods("GET")
 
-	// {{{1 Start HTTP server	
+	// {{{1 Start HTTP server
+	logger.Debug("starting HTTP server")
+	
 	server := http.Server{
 		Addr: config.HTTPAddr,
 		Handler: handlers.PanicHandler{
