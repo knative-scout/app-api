@@ -9,7 +9,6 @@ import (
 
 	"github.com/knative-scout/app-api/config"
 	"github.com/knative-scout/app-api/handlers"
-	"github.com/knative-scout/app-api/models"
 	
 	"github.com/Noah-Huppert/golog"
 	"github.com/gorilla/mux"
@@ -101,13 +100,7 @@ func main() {
 	}
 
 	logger.Debug("authenticated with GitHub API")
-
-	app, err := models.LoadAppFromRegistry(ctx, gh, cfg, "serverless-example-nodejs")
-	if err != nil {
-		logger.Fatalf("failed to get serverless-example-nodejs app: %s", err.Error())
-	}
-	logger.Debugf("serverless-example-nodejs app: %#v", app)
-
+	
 	// {{{1 Router
 	baseHandler := handlers.BaseHandler{
 		Ctx: ctx,
