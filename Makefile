@@ -36,4 +36,4 @@ db:
 
 # Runs mongo on shell
 db-cli:
-	docker exec -i -t ${DB_CONTAINER_NAME} bash
+	docker run -it --rm --net host mongo:latest mongo -u ${DB_USER} -p ${DB_PASSWORD}
