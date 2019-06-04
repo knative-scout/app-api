@@ -1,6 +1,15 @@
 package models
 
 // App is a serverless application from the repository
+
+/*
+Stores the json file format of the response
+Fields in structures can have tags, which hold metadata about a field.
+The `json:"VALUE"` tag tells the JSON library to place the value of that field under the `VALUE` key in the json object.
+ */
+
+
+
 type App struct {
 	// ID is a human and computer readable identifier for the application
 	ID string `json:"id"`
