@@ -1,6 +1,7 @@
 package models
 
 // App is a serverless application from the repository
+// Stores the json file format of the response
 type App struct {
 	// ID is a human and computer readable identifier for the application
 	ID string `json:"id"`
