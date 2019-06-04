@@ -10,25 +10,25 @@ import (
 // Config holds application configuration
 type Config struct {
 	// HTTPAddr is the HTTP server's bind address
-	HTTPAddr string `default:":5000" split_words:"true"`
+	HTTPAddr string `default:":5000" split_words:"true" required:"true"`
 
 	// DbHost is the MongoDB server host
-	DbHost string `default:"localhost" split_words:"true"`
+	DbHost string `default:"localhost" split_words:"true" required:"true"`
 
 	// DbPort is the MongoDB server port
-	DbPort int `default:"27017" split_words:"true"`
+	DbPort int `default:"27017" split_words:"true" required:"true"`
 
 	// DbUser is the MongoDB user
-	DbUser string `default:"knative-scout-dev" split_words:"true"`
+	DbUser string `default:"knative-scout-dev" split_words:"true" required:"true"`
 
 	// DbPassword is the MongoDB password
-	DbPassword string `default:"secretpassword" split_words:"true"`
+	DbPassword string `default:"secretpassword" split_words:"true" required:"true"`
 
 	// DbName is the database to connect to inside MongoDB
-	DbName string `default:"knative-scout-app-api-dev" split_words:"true"`
+	DbName string `default:"knative-scout-app-api-dev" split_words:"true" required:"true"`
 
 	// GhToken is a GitHub API token with repository read permissions
-	GhToken string `split_words:"true"`
+	GhToken string `split_words:"true" required:"true"`
 }
 
 // NewConfig loads configuration values from environment variables
