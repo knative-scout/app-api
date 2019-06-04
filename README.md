@@ -29,6 +29,7 @@ Configuration is passed via environment variables:
 - `APP_DB_PASSWORD` (String): MongoDB password, defaults to `secretpassword`
 - `APP_DB_NAME` (String): MongoDB database name, defaults
   to `knative-scout-app-api-dev`
+- `APP_GH_TOKEN` (String): GitHub API token with repository read permissions
 
 ## Run
 Start the server by running:
@@ -67,7 +68,12 @@ make deploy
 ```
 
 ## GitHub
+### Webhook
 A webhook should exist for the
 [app-repository](https://github.com/knative-scout/app-repository/settings/hooks/new).  
 This webhook should send pull request events to the app pull request 
 webhook endpoint.
+
+### API Token
+Generate an API token which has repository read access only.  
+Provide to application via `APP_GH_TOKEN` environment variable.
