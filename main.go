@@ -13,6 +13,8 @@ import (
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"github.com/google/go-github/v25/github"
+	"golang.org/x/oauth2"
 )
 
 func main() {
@@ -75,13 +77,35 @@ func main() {
 		logger.Fatalf("failed to test database connection: %s", err.Error())
 	}
 
-	logger.Info("Connected to Mongo")
+	logger.Debug("connected to Db")
 
+	// {{{1 GitHub
+	// {{{2 Create client
+	logger.Debug("authenticating with GitHub API")
+	
+	ghTokenSrc := oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: config.GhToken,
+	})
+	ghTokenClient := oauth2.NewClient(ctx, ghTokenSrc)
+	
+	gh := github.NewClient(ghTokenClient)
+
+	// {{{2 Ensure registry repository exists
+	_, _, err = gh.Repositories.Get(ctx, config.GhRegistryRepoOwner,
+		config.GhRegistryRepoName)
+	if err != nil {
+		logger.Fatalf("failed to get information about serverless application "+
+			"registry repository: %s", err.Error())
+	}
+
+	logger.Debug("authenticated with GitHub API")
+	
 	// {{{1 Router
 	baseHandler := handlers.BaseHandler{
 		Ctx: ctx,
 		Logger: logger.GetChild("handlers"),
 		MDb: mDb,
+		Gh: gh,
 	}
 
 	router := mux.NewRouter()
