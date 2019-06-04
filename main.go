@@ -105,6 +105,7 @@ func main() {
 		Ctx: ctx,
 		Logger: logger.GetChild("handlers"),
 		MDb: mDb,
+		Gh: gh,
 	}
 
 	router := mux.NewRouter()
