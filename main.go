@@ -102,11 +102,14 @@ func main() {
 
 	logger.Debug("authenticated with GitHub API")
 
-	app, err := models.LoadAppFromRegistry(ctx, gh, cfg, "serverless-example-nodejs")
+	apps, err := models.LoadAllAppsFromRegistry(ctx, gh, cfg)
 	if err != nil {
-		logger.Fatalf("failed to get serverless-example-nodejs app: %s", err.Error())
+		logger.Fatalf("failed to load apps: %s", err.Error())
 	}
-	logger.Debugf("serverless-example-nodejs app: %#v", app)
+
+	for _, app := range apps {
+		logger.Debugf("%#v", app)
+	}
 
 	// {{{1 Router
 	baseHandler := handlers.BaseHandler{
