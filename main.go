@@ -13,6 +13,8 @@ import (
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"github.com/google/go-github/v25/github"
+	"golang.org/x/oauth2"
 )
 
 func main() {
@@ -73,6 +75,25 @@ func main() {
 
 	if err := mDb.Ping(ctx, nil); err != nil {
 		logger.Fatalf("failed to test datbase connection: %s", err.Error())
+	}
+
+	// {{{1 GitHub
+	// {{{2 Create client
+	logger.Debug("authenticating with GitHub API")
+	
+	ghTokenSrc := oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: config.GhToken,
+	})
+	ghTokenClient := oauth2.NewClient(ctx, ghTokenSrc)
+	
+	gh := github.NewClient(ghTokenClient)
+
+	// {{{2 Ensure registry repository exists
+	_, _, err = gh.Repositories.Get(ctx, config.GhRegistryRepoOwner,
+		config.GhRegistryRepoName)
+	if err != nil {
+		logger.Fatalf("failed to get information about serverless application "+
+			"registry repository: %s", err.Error())
 	}
 	
 	// {{{1 Router
