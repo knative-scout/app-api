@@ -10,18 +10,31 @@ API which manages applications.
 See [DESIGN.md](DESIGN.md)
 
 # Development
-Written in Go using the native HTTP library.  
-
+## Database
 Start a local MongoDB server by running:
 
 ```
 make db
 ```
 
+## Run
 Start the server by running:
 
 ```
 go run .
+```
+
+## Temporary Open Shift
+The `tmpk` script wraps `kubectl` with the required arguments to connect to the
+48 hour Open Shift clusters.
+
+Set the `TMPK_TOKEN` and `TMPK_N` environment variables. See the `tmpk` file 
+for details about what to set these environment variables to.
+
+Use the `tmpk` script as if it was `kubectl`:
+
+```
+./tmpk get all
 ```
 
 # Deployment
