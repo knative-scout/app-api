@@ -29,6 +29,14 @@ type Config struct {
 
 	// GhToken is a GitHub API token with repository read permissions
 	GhToken string `split_words:"true" required:"true"`
+
+	// GhRegistryRepoOwner is the GitHub user / organization which owns the serverless
+	// application registry repository.
+	GhRegistryRepoOwner string `default:"knative-scout" split_words:"true" required:"true"`
+
+	// GhRegistryRepoName is the name of the GitHub repository which acts as a serverless
+	// application registry.
+	GhRegistryRepoName string `default:"serverless-apps" split_words:"true" required:"true"`
 }
 
 // NewConfig loads configuration values from environment variables
