@@ -4,15 +4,6 @@ metadata:
   name: knative-scout
 ---
 apiVersion: v1
-kind: Secret
-metadata:
-  name: mongo-credentials
-  namespace: knative-scout
-type: Opaque
-data:
-  password: c3VwZXJzZWNyZXRkZXBsb3lwYXNzd29yZAo= # supersecretdeploypassword
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: app-api-config
