@@ -66,7 +66,7 @@ func main() {
 	}
 
 	// {{{2 Connect
-	logger.Debug("connecting to DB")
+	logger.Debug("connecting to Db")
 	
 	mDb, err := mongo.Connect(ctx, mDbConnOpts)
 	if err != nil {
@@ -74,8 +74,10 @@ func main() {
 	}
 
 	if err := mDb.Ping(ctx, nil); err != nil {
-		logger.Fatalf("failed to test datbase connection: %s", err.Error())
+		logger.Fatalf("failed to test database connection: %s", err.Error())
 	}
+
+	logger.Debug("connected to Db")
 
 	// {{{1 GitHub
 	// {{{2 Create client
@@ -95,6 +97,8 @@ func main() {
 		logger.Fatalf("failed to get information about serverless application "+
 			"registry repository: %s", err.Error())
 	}
+
+	logger.Debug("authenticated with GitHub API")
 	
 	// {{{1 Router
 	baseHandler := handlers.BaseHandler{

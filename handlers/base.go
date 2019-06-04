@@ -13,6 +13,7 @@ import (
 
 // BaseHandler provides helper methods and commonly used variables for API endpoints to base
 // their http.Handlers off
+
 type BaseHandler struct {
 	// Ctx is the application context
 	Ctx context.Context
@@ -36,7 +37,7 @@ func (h BaseHandler) GetChild(prefix string) BaseHandler {
 	}
 }
 
-// RepondJSON sends an object as a JSON encoded response
+// RespondJSON sends an object as a JSON encoded response
 func (h BaseHandler) RespondJSON(w http.ResponseWriter, status int, resp interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

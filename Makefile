@@ -1,4 +1,5 @@
-.PHONY: deploy docker-build docker-run docker-push db
+.PHONY: deploy docker-build docker-run docker-push db db-cli
+
 
 DB_DATA_DIR ?= container-data/db
 DB_CONTAINER_NAME ?= knative-scout-app-api-db
@@ -7,6 +8,7 @@ DB_PASSWORD ?= secretpassword
 
 DOCKER_TAG ?= kscout/app-api:dev-latest
 
+# Builds the docker image for app-api
 KUBECTL ?= kubectl
 
 # deploy Kubernetes resources
@@ -17,15 +19,19 @@ deploy:
 docker-build:
 	docker build -t ${DOCKER_TAG} .
 
-# push Docker image to Docker hub
+
+# Push the docker image for app-api to docker hub
 docker-push:
 	docker push ${DOCKER_TAG}
 
-# run Docker container
+
+# Runs the app-api docker image on local machine
 docker-run:
 	docker run -it --rm --net host ${DOCKER_TAG}
 
+
 # Start MongoDB server in container
+# Pulls docker image for latest mongo build and runs the container
 db:
 	mkdir -p ${DB_DATA_DIR}
 	docker run \
@@ -34,3 +40,7 @@ db:
 		-e MONGO_INITDB_ROOT_USERNAME=${DB_USER} \
 		-e MONGO_INITDB_ROOT_PASSWORD=${DB_PASSWORD} \
 		mongo:latest
+
+# Runs mongo on shell
+db-cli:
+	docker run -it --rm --net host mongo:latest mongo -u ${DB_USER} -p ${DB_PASSWORD}
