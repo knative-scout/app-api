@@ -29,6 +29,7 @@ Schema:
 - `tags` (List[String])
 - `verification_status` (String): One of `pending`, `verifying`, `good`, `bad`
 - `github_url` (String)
+- `deployment_file_urls` (List[String])
 - `version` (String)
 - `author` (String)
 - `maintainer` (String)

@@ -7,12 +7,16 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/knative-scout/app-api/config"
 	"github.com/knative-scout/app-api/handlers"
+	"github.com/knative-scout/app-api/models"
 	
 	"github.com/Noah-Huppert/golog"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"github.com/google/go-github/v25/github"
+	"golang.org/x/oauth2"
 )
 
 func main() {
@@ -35,28 +39,28 @@ func main() {
 	logger.Debug("starting")
 
 	// {{{1 Configuration
-	config, err := NewConfig()
+	cfg, err := config.NewConfig()
 	if err != nil {
 		logger.Fatalf("failed to load configuration: %s", err.Error())
 	}
 
-	configStr, err := config.String()
+	cfgStr, err := cfg.String()
 	if err != nil {
 		logger.Fatalf("failed to convert configuration into string for debug log: %s",
 			err.Error())
 	}
 
-	logger.Debugf("loaded configuration: %s", configStr)
+	logger.Debugf("loaded configuration: %s", cfgStr)
 
 	// {{{1 MongoDB
 	// {{{2 Build connection options
 	mDbConnOpts := options.Client()
 	mDbConnOpts.SetAuth(options.Credential{
-		Username: config.DbUser,
-		Password: config.DbPassword,
+		Username: cfg.DbUser,
+		Password: cfg.DbPassword,
 	})
 	mDbConnOpts.SetHosts([]string{
-		fmt.Sprintf("%s:%d", config.DbHost, config.DbPort),
+		fmt.Sprintf("%s:%d", cfg.DbHost, cfg.DbPort),
 	})
 
 	if err = mDbConnOpts.Validate(); err != nil {
@@ -64,7 +68,7 @@ func main() {
 	}
 
 	// {{{2 Connect
-	logger.Debug("connecting to DB")
+	logger.Debug("connecting to Db")
 	
 	mDb, err := mongo.Connect(ctx, mDbConnOpts)
 	if err != nil {
@@ -75,13 +79,41 @@ func main() {
 		logger.Fatalf("failed to test database connection: %s", err.Error())
 	}
 
-	logger.Info("Connected to Mongo")
+	logger.Debug("connected to Db")
+
+	// {{{1 GitHub
+	// {{{2 Create client
+	logger.Debug("authenticating with GitHub API")
+	
+	ghTokenSrc := oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: cfg.GhToken,
+	})
+	ghTokenClient := oauth2.NewClient(ctx, ghTokenSrc)
+	
+	gh := github.NewClient(ghTokenClient)
+
+	// {{{2 Ensure registry repository exists
+	_, _, err = gh.Repositories.Get(ctx, cfg.GhRegistryRepoOwner,
+		cfg.GhRegistryRepoName)
+	if err != nil {
+		logger.Fatalf("failed to get information about serverless application "+
+			"registry repository: %s", err.Error())
+	}
+
+	logger.Debug("authenticated with GitHub API")
+
+	app, err := models.LoadAppFromRegistry(ctx, gh, cfg, "serverless-example-nodejs")
+	if err != nil {
+		logger.Fatalf("failed to get serverless-example-nodejs app: %s", err.Error())
+	}
+	logger.Debugf("serverless-example-nodejs app: %#v", app)
 
 	// {{{1 Router
 	baseHandler := handlers.BaseHandler{
 		Ctx: ctx,
 		Logger: logger.GetChild("handlers"),
 		MDb: mDb,
+		Gh: gh,
 	}
 
 	router := mux.NewRouter()
@@ -94,7 +126,7 @@ func main() {
 	logger.Debug("starting HTTP server")
 	
 	server := http.Server{
-		Addr: config.HTTPAddr,
+		Addr: cfg.HTTPAddr,
 		Handler: handlers.PanicHandler{
 			BaseHandler: baseHandler,
 			Handler: handlers.ReqLoggerHandler{
@@ -110,7 +142,7 @@ func main() {
 		}
 	}()
 
-	logger.Infof("started server on %s", config.HTTPAddr)
+	logger.Infof("started server on %s", cfg.HTTPAddr)
 
 	<-ctx.Done()
 

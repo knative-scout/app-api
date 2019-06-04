@@ -30,6 +30,10 @@ Configuration is passed via environment variables:
 - `APP_DB_NAME` (String): MongoDB database name, defaults
   to `knative-scout-app-api-dev`
 - `APP_GH_TOKEN` (String): GitHub API token with repository read permissions
+- `APP_GH_REGISTRY_REPO_OWNER` (String): Owner of serverless application
+  registry repository, defaults to `knative-scout`
+- `APP_GH_REGISTRY_REPO_NAME` (String): Name of serverless application
+  registry repository, defaults to `serverless-apps`
 
 ## Run
 Start the server by running:
