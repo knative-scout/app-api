@@ -10,19 +10,15 @@ API which manages applications.
 See [DESIGN.md](DESIGN.md)
 
 # Development
-Written in Go using the native HTTP library.  
-
+## Database
 Start a local MongoDB server by running:
 
 ```
 make db
 ```
 
-Start the server by running:
-
-```
-go run .
-```
+## Configuration
+The default values will work for local development.  
 
 Configuration is passed via environment variables:
 
@@ -33,6 +29,26 @@ Configuration is passed via environment variables:
 - `APP_DB_PASSWORD` (String): MongoDB password, defaults to `secretpassword`
 - `APP_DB_NAME` (String): MongoDB database name, defaults
   to `knative-scout-app-api-dev`
+
+## Run
+Start the server by running:
+
+```
+go run .
+```
+
+## Temporary Open Shift
+The `tmpk` script wraps `kubectl` with the required arguments to connect to the
+48 hour Open Shift clusters.
+
+Set the `TMPK_TOKEN` and `TMPK_N` environment variables. See the `tmpk` file 
+for details about what to set these environment variables to.
+
+Use the `tmpk` script as if it was `kubectl`:
+
+```
+./tmpk get all
+```
 
 # Deployment
 ## Kubernetes

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"fmt"
 	"net/http"
 
 	"github.com/knative-scout/app-api/handlers"
@@ -39,7 +40,22 @@ func main() {
 	}
 
 	// {{{1 MongoDB
-	mDb, err := mongo.Connect(ctx, options.Client().ApplyURI(config.DBConnURL))
+	// {{{2 Build connection options
+	mDbConnOpts := options.Client()
+	mDbConnOpts.SetAuth(options.Credential{
+		Username: config.DbUser,
+		Password: config.DbPassword,
+	})
+	mDbConnOpts.SetHosts([]string{
+		fmt.Sprintf("%s:%d", config.DbHost, config.DbPort),
+	})
+
+	if err = mDbConnOpts.Validate(); err != nil {
+		logger.Fatalf("failed to validate database connection options: %s", err.Error())
+	}
+
+	// {{{2 Connect
+	mDb, err := mongo.Connect(ctx, mDbConnOpts)
 	if err != nil {
 		logger.Fatalf("failed to connect to database: %s", err.Error())
 	}
