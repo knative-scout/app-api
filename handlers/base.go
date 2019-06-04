@@ -12,9 +12,6 @@ import (
 
 // BaseHandler provides helper methods and commonly used variables for API endpoints to base
 // their http.Handlers off
-/*
-
- */
 
 type BaseHandler struct {
 	// Ctx is the application context
