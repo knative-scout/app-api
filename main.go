@@ -36,6 +36,9 @@ func main() {
 
 	// {{{1 Configuration
 	config, err := NewConfig()
+	if err != nil {
+		logger.Fatalf("failed to load configuration: %s", err.Error())
+	}
 
 	configStr, err := config.String()
 	if err != nil {
@@ -44,10 +47,6 @@ func main() {
 	}
 
 	logger.Debugf("loaded configuration: %s", configStr)
-
-	if err != nil {
-		logger.Fatalf("failed to load configuration: %s", err.Error())
-	}
 
 	// {{{1 MongoDB
 	// {{{2 Build connection options
