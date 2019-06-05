@@ -24,14 +24,14 @@
 prog_dir=$(realpath $(dirname "$0"))
 kubectl="$prog_dir/../tmpk"
 
-app_file_args=(
+common_file_args=(
     "--filename" "$prog_dir/ns.yaml"
     "--filename" "$prog_dir/secrets.yaml"
+)
+app_file_args=(
     "--filename" "$prog_dir/app.yaml"
 )
 db_file_args=(
-    "--filename" "$prog_dir/ns.yaml"
-    "--filename" "$prog_dir/secrets.yaml"
     "--filename" "$prog_dir/db.yaml"
 )
 
@@ -55,10 +55,11 @@ case "$cmd" in
     *) die "CMD arugment must be \"up\" or \"down\"" ;;
 esac
 
+file_args=("${common_file_args[@]}")
 case "$component" in
-    app) file_args=("${app_file_args[@]}") ;;
-    db) file_args=("${db_file_args[@]}") ;;
-    all) file_args=("${app_file_args[@]}" "${db_file_args[@]}") ;;
+    app) file_args+=("${app_file_args[@]}") ;;
+    db) file_args+=("${db_file_args[@]}") ;;
+    all) file_args+=("${app_file_args[@]}" "${db_file_args[@]}") ;;
     *) die "COMPONENT arugment must be \"app\", \"db\", or \"all\"" ;;
 esac
 
