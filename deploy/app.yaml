@@ -81,7 +81,9 @@ metadata:
   name: app-api
   namespace: knative-scout
   labels:
-    app: app-api    
+    app: app-api
+  annotations:
+    kubernetes.io/tls-acme: "true"
 spec:
   host: api.kscout.io
   path: /
