@@ -116,7 +116,7 @@ func (e AppSrcFormatError) Error() string {
 	out += e.public
 
 	if e.error != nil {
-		out += fmt.Sprintf(": %s", err.Error())
+		out += fmt.Sprintf(": %s", e.error.Error())
 	}
 
 	return out
