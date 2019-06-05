@@ -41,8 +41,13 @@ spec:
             - name: APP_GH_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: gh-api-credentials
-                  key: token
+                  name: gh-api-configuration
+                  key: apiToken
+            - name: APP_GH_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: gh-api-configuration
+                  key: webhookSecret
           ports:
             - name: http
               containerPort: 5000
