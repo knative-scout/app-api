@@ -50,19 +50,18 @@ go run .
 
 # Deployment
 ## Kubernetes
-Set the Mongo DB database password:
-
-```
-echo "PUT YOUR PASSWORD HERE" | base64 | tee password
-kubectl -n knative-scout create secret generic mongo-credentials --from-file password
-rm password
-```
-
-Deploy the API server and Mongo:
-
-```
-make deploy
-```
+1. Set secrets
+  - Create copy of `deploy/secrets.ex.yaml` named `deploy/secrets.yaml`
+  - Replace the placeholder values with the correct base64 encoded values
+2. Deploy
+   - Deploy the database:
+     ```
+	 ./deploy/deploy.sh up db
+	 ```
+   - Deploy the app API server:
+     ```
+	 ./deploy/deploy.sh up app
+	 ```
 
 ## Temporary Open Shift
 The `tmpk` script wraps `kubectl` with the required arguments to connect to the

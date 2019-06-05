@@ -1,3 +1,9 @@
+# Local MongoDB
 container-data
+
+# Intellij
 .idea
+
+# Secrets
 .env
+deploy/secrets.yaml
