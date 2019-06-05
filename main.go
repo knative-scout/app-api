@@ -9,7 +9,6 @@ import (
 
 	"github.com/knative-scout/app-api/config"
 	"github.com/knative-scout/app-api/handlers"
-	"github.com/knative-scout/app-api/models"
 	
 	"github.com/Noah-Huppert/golog"
 	"github.com/gorilla/mux"
