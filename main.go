@@ -161,8 +161,8 @@ func main() {
 		baseHandler.GetChild("health"),
 	}).Methods("GET")
 
-	router.Handle("/app/{id}", handlers.AppHandler {
-		baseHandler.GetChild("app"),
+	router.Handle("/apps/{id}", handlers.AppByIDHandler {
+		baseHandler.GetChild("apps"),
 	}).Methods("GET")
 
 	// {{{1 Start HTTP server

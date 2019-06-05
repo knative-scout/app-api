@@ -7,14 +7,15 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"net/http"
 	"github.com/gorilla/mux"
+	"fmt"
 )
 
-// HealthHandler is used to determine if the server is running
-type AppHandler struct {
+// AppByIDHandler returns a single app by ID from the database
+type AppByIDHandler struct {
 	BaseHandler
 }
 // ServeHTTP implements http.Handler
-func (h AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h AppByIDHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	//gets all the optional parametres passed in the URL
 	vars := mux.Vars(r)
@@ -27,19 +28,19 @@ func (h AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 
-func getDataFromDB(id string, h AppHandler ) models.App{
+func getDataFromDB(id string, h AppByIDHandler ) models.App{
 
 	ret := []models.App{}
 	result, err := h.MDbApps.Find(h.Ctx, bson.D{{"app_id", id}})
 
 	if err != nil {
-		 h.Logger.Fatalf("failed to retrieve data from db %s", err)
+		panic(fmt.Errorf("failed to retrieve data from db: %s", err.Error()))
 	}
 
 	for result.Next(h.Ctx) {
 		a := models.App{}
 		if err = result.Decode(&a); err != nil {
-			h.Logger.Fatalf("readTasks: couldn't make to-do item ready for display: %v", err)
+			panic(fmt.Errorf("readTasks: couldn't make to-do item ready for display: %s", err.Error()))
 		}
 		ret = append(ret,a)
 	}
