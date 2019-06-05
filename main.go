@@ -161,6 +161,10 @@ func main() {
 		baseHandler.GetChild("health"),
 	}).Methods("GET")
 
+	router.Handle("/app/{id}", handlers.AppHandler {
+		baseHandler.GetChild("app")
+	})
+
 	// {{{1 Start HTTP server
 	logger.Debug("starting HTTP server")
 	
