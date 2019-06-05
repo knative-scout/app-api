@@ -44,11 +44,17 @@ func getDataFromDB(query string, tags string, categories string, h AppsHandler )
 	}
 	if len(tags)>0{
 		tags := strings.Split(tags, ",")
-		searchBson = append(searchBson, bson.E{"tags", bson.D{{"$in", tags}}})
+		searchBson = append(searchBson, bson.E{
+			"tags",
+				bson.D{{"$in", tags}},
+		})
 	}
 	if len(categories)>0{
 		categories := strings.Split(categories, ",")
-		searchBson = append(searchBson, bson.E{"categories", bson.D{{"$in", categories}}})
+		searchBson = append(searchBson, bson.E{
+			"categories", bson.D{
+				{"$in", categories}},
+		})
 	}
 
 
@@ -56,7 +62,6 @@ func getDataFromDB(query string, tags string, categories string, h AppsHandler )
 	result, err := h.MDbApps.Find(h.Ctx, searchBson)
 
 	if err != nil {
-		 h.Logger.Fatalf("failed to retrieve data from db %s", err)
 		 panic(err)
 
 	}
@@ -64,7 +69,6 @@ func getDataFromDB(query string, tags string, categories string, h AppsHandler )
 	for result.Next(h.Ctx) {
 		a := models.App{}
 		if err = result.Decode(&a); err != nil {
-			h.Logger.Fatalf("readTasks: couldn't make to-do item ready for display: %v", err)
 			panic(err)
 		}
 		ret = append(ret,a)
