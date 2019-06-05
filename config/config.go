@@ -37,6 +37,10 @@ type Config struct {
 	// GhRegistryRepoName is the name of the GitHub repository which acts as a serverless
 	// application registry.
 	GhRegistryRepoName string `default:"serverless-apps" split_words:"true" required:"true"`
+
+	// GhWebhookSecret is the secret token used to verify requests to the Webhook came
+	// from GitHub
+	GhWebhookSecret string `split_words:"true" required:"true"`
 }
 
 // NewConfig loads configuration values from environment variables
