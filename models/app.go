@@ -45,51 +45,51 @@ const VerificationStatusBad VerStatusT = "bad"
 type App struct {
 	manifestFile
 	
-	// ID is a human and computer readable identifier for the application
-	ID string `json:"id" validate:"required"`
+	// AppID is a human and computer readable identifier for the application
+	AppID string `json:"id" bson:"app_id" validate:"required"`
 
 	// Description is more detailed markdown formatted information about the app
-	Description string `json:"description" validate:"required"`
+	Description string `json:"description" bson:"description" validate:"required"`
 
 	// ScreenshotURLs are links to app screenshots
-	ScreenshotURLs []string `json:"screenshot_urls"`
+	ScreenshotURLs []string `json:"screenshot_urls" bson:"screenshot_urls"`
 
 	// LogoURL is a link to the app logo
-	LogoURL string `json:"logo_url" validate:"required"`
+	LogoURL string `json:"logo_url" bson:"logo_url" validate:"required"`
 
 	// VerificationStatus indicates the stage of the verification process the app
 	// is currently in. Can be one of: "pending", "verifying", "good", "bad"
-	VerificationStatus VerStatusT `json:"verification_status" validate:"required"`
+	VerificationStatus VerStatusT `json:"verification_status" bson:"verification_status" validate:"required"`
 
 	// GitHubURL is a link to the GitHub files for the app
-	GitHubURL string `json:"github_url" validate:"required"`
+	GitHubURL string `json:"github_url" bson:"github_url" validate:"required"`
 
 	// DeploymentFileURLs are links to the Knative deployment resource files
-	DeploymentFileURLs []string `json:"deployment_file_urls" validate:"required"`
+	DeploymentFileURLs []string `json:"deployment_file_urls" bson:"deployment_file_urls" validate:"required"`
 
 	// Version is the semantic version of the app
-	Version string `json:"version" validate:"required"`
+	Version string `json:"version" bson:"version" validate:"required"`
 }
 
 // manifestFile holds some of the metadata about a serverless application.
 type manifestFile struct {
 	// Name to display to users
-	Name string `yaml:"name" json:"name" validate:"required"`
+	Name string `yaml:"name" json:"name" bson:"name" validate:"required"`
 	
 	// Tagline is a short description of the app
-	Tagline string `yaml:"tagline" json:"tagline" validate:"required"`
+	Tagline string `yaml:"tagline" json:"tagline" bson:"tagline" validate:"required"`
 
 	// Tags is a lists of tags
-	Tags []string `yaml:"tags" json:"tags" validate:"required"`
+	Tags []string `yaml:"tags" json:"tags" bson:"tags" validate:"required"`
 
 	// Categories is a list of categories
-	Categories []string `yaml:"categories" json:"categories" validate:"required"`
+	Categories []string `yaml:"categories" json:"categories" bson:"categories" validate:"required"`
 
 	// Author is the person who created the app
-	Author string `yaml:"author" json:"author" validate:"required"`
+	Author string `yaml:"author" json:"author" bson:"author" validate:"required"`
 
 	// Maintainer is the person who will support the app
-	Maintainer string `yaml:"maintainer" json:"author" validate:"required"`
+	Maintainer string `yaml:"maintainer" json:"author" bson:"maintainer" validate:"required"`
 }
 
 // getGhURLsFromDir returns an array of GitHub HTML links to files in the specified directory
@@ -180,7 +180,7 @@ func LoadAppFromRegistry(ctx context.Context, gh *github.Client, cfg *config.Con
 	// {{{1 Parse contents into App
 	app := App{}
 
-	app.ID = appName
+	app.AppID = appName
 	app.VerificationStatus = VerificationStatusPending
 	app.GitHubURL = fmt.Sprintf("https://github.com/%s/%s/tree/master/%s",
 		cfg.GhRegistryRepoOwner, cfg.GhRegistryRepoName, appName)

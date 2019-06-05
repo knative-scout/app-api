@@ -1,4 +1,4 @@
-.PHONY: deploy docker-build docker-run docker-push db db-cli
+.PHONY: docker-build docker-run docker-push db db-cli
 
 
 DB_DATA_DIR ?= container-data/db
@@ -6,14 +6,9 @@ DB_CONTAINER_NAME ?= knative-scout-app-api-db
 DB_USER ?= knative-scout-dev
 DB_PASSWORD ?= secretpassword
 
-DOCKER_TAG ?= kscout/app-api:dev-latest
+DOCKER_TAG_VERSION ?= dev-latest
+DOCKER_TAG ?= kscout/app-api:${DOCKER_TAG_VERSION}
 
-# Builds the docker image for app-api
-KUBECTL ?= kubectl
-
-# deploy Kubernetes resources
-deploy:
-	${KUBECTL} apply --filename deploy.yaml
 
 # build Docker image
 docker-build:
