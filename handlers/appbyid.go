@@ -22,7 +22,7 @@ func (h AppByIDHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	id := vars["id"]
 
-	app := getDataFromDB(id,h)
+	app := getAppIDDataFromDB(id,h)
 
 	if app != nil {
 		resp :=  map[string]interface{}{"app": app}
@@ -35,7 +35,7 @@ func (h AppByIDHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 
-func getDataFromDB(id string, h AppByIDHandler ) *models.App{
+func getAppIDDataFromDB(id string, h AppByIDHandler ) *models.App{
 
 	ret := []models.App{}
 	result, err := h.MDbApps.Find(h.Ctx, bson.D{{"app_id", id}})
