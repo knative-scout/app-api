@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"crypto/hmac"
 	"crypto/sha1"
-	"hash"
 	"io/ioutil"
 )
 
@@ -22,6 +21,11 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"error": "X-Hub-Signature header not present",
 		})
 		return
+	} else if len(hashSig) != 1 {
+		h.RespondJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "X-Hub-Signature header must have 1 value",
+		})
+		return
 	} else {
 		bodyBytes, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -29,12 +33,12 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				err.Error()))
 		}
 		
-		bodyHMAC := hmac.New(sha1.New, []byte(h.cfg.GhWebhookSecret))
+		bodyHMAC := hmac.New(sha1.New, []byte(h.Cfg.GhWebhookSecret))
 		bodyHMAC.Write(bodyBytes)
 
 		matchHashSig := fmt.Sprintf("sha1=%s", bodyHMAC.Sum(nil))
 
-		if !hmac.Equal([]byte(hashSig), []byte(matchHashSig)) {
+		if !hmac.Equal([]byte(hashSig[0]), []byte(matchHashSig)) {
 			h.RespondJSON(w, http.StatusBadRequest, map[string]string{
 				"error": "failed to verify request signature",
 			})
@@ -48,7 +52,12 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"error": "X-GitHub-Event header not present",
 		})
 		return
-	} else if eventType != "pull_request" {
+	} else if len(eventType) != 1 {
+		h.RespondJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "X-GitHub-Event header must have 1 value",
+		})
+		return;
+	} else if eventType[0] != "pull_request" {
 		h.RespondJSON(w, http.StatusBadRequest, map[string]string{
 			"error": "can only handle \"pull_request\" events",
 		})
