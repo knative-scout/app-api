@@ -1,3 +1,5 @@
 container-data
 *.md
 Dockerfile
+deploy/
+.env

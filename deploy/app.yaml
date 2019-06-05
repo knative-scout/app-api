@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-api
+  namespace: knative-scout
+  labels:
+    app: app-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-api
+  template:
+    metadata:
+      labels:
+        app: app-api
+    spec:
+      containers:
+        - name: app-api
+          image: docker.io/kscout/app-api:dev-1
+          env:
+            - name: APP_HTTP_ADDR
+              value: ":5000"
+            - name: APP_DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: mongoUser
+            - name: APP_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-credentials
+                  key: password
+            - name: APP_DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: mongoDbName
+            - name: APP_DB_HOST
+              value: $(MONGO_SERVICE_HOST)
+            - name: APP_GH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: gh-api-credentials
+                  key: token
+          ports:
+            - name: http
+              containerPort: 5000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-api
+  namespace: knative-scout
+  labels:
+    app: app-api
+spec:
+  type: ClusterIP
+  selector:
+    app: app-api
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: http
+      name: http
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: app-api
+  namespace: knative-scout
+  labels:
+    app: app-api    
+spec:
+  host: api.kscout.io
+  path: /
+  to:
+    kind: Service
+    name: app-api
+    weight: 100
+  port:
+    targetPort: http
+status:
+  ingress:
+    - host: api.kscout.io
+      
