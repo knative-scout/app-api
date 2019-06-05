@@ -22,13 +22,20 @@ func (h AppByIDHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	id := vars["id"]
 
-	resp := getDataFromDB(id, h)
+	app := getDataFromDB(id,h)
 
-	h.RespondJSON(w, http.StatusOK, resp)
+	if app != nil {
+		resp :=  map[string]interface{}{"app": app}
+
+		h.RespondJSON(w, http.StatusOK, resp) 
+	} else {
+		resp :=  map[string]interface{}{"error": "app not found"}
+		h.RespondJSON(w,http.StatusNotFound,resp)
+	}
 }
 
 
-func getDataFromDB(id string, h AppByIDHandler ) models.App{
+func getDataFromDB(id string, h AppByIDHandler ) *models.App{
 
 	ret := []models.App{}
 	result, err := h.MDbApps.Find(h.Ctx, bson.D{{"app_id", id}})
@@ -44,5 +51,10 @@ func getDataFromDB(id string, h AppByIDHandler ) models.App{
 		}
 		ret = append(ret,a)
 	}
-	return ret[0]
+
+	if len(ret) == 0 {
+		return nil
+	}
+
+	return &ret[0]
 }
