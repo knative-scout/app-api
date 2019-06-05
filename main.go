@@ -170,6 +170,10 @@ func main() {
 		baseHandler.GetChild("app-search"),
 	}).Methods("GET")
 
+	router.Handle("/apps/webhook", handlers.WebhookHandler{
+		baseHandler.GetChild("webhook"),
+	}).Methods("POST")
+
 	// !!! Must always be last !!!
 	router.Handle("/", handlers.PreFlightOptionsHandler{
 		baseHandler.GetChild("pre-flight-options"),
