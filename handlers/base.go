@@ -21,8 +21,11 @@ type BaseHandler struct {
 	// Logger logs information
 	Logger golog.Logger
 
-	// MDb is the MongoDB client
-	MDb *mongo.Client
+	// MDb is a MongoDB database instance
+	MDb *mongo.Database
+
+	// MDbApps is the MongoDB apps collection instance
+	MDbApps *mongo.Collection
 
 	// Gh is the GitHub API client
 	Gh *github.Client
