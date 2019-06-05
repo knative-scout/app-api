@@ -7,6 +7,7 @@ import (
 	"crypto/sha1"
 	"io/ioutil"
 	"encoding/hex"
+	"encoding/json"
 
 	"github.com/knative-scout/app-api/models"
 
@@ -39,6 +40,8 @@ type pullRequest struct {
 // ServeHTTP implements net.Handler
 func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// {{{1 Verify request came from GitHub
+	var bodyBytes []byte = []byte{}
+	
 	if hashSig, ok := r.Header["X-Hub-Signature"]; !ok {
 		h.RespondJSON(w, http.StatusBadRequest, map[string]string{
 			"error": "X-Hub-Signature header not present",
@@ -50,11 +53,12 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	} else {
-		bodyBytes, err := ioutil.ReadAll(r.Body)
+		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			panic(fmt.Errorf("failed to ready body bytes when verifying request: %s",
 				err.Error()))
 		}
+		bodyBytes = b
 		
 		bodyHMAC := hmac.New(sha1.New, []byte(h.Cfg.GhWebhookSecret))
 		bodyHMAC.Write(bodyBytes)
@@ -94,8 +98,10 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// {{{1 Check if PR is merged as a result
 	var req webhookRequest
-	h.ParseJSON(r, &req)
-
+	if err := json.Unmarshal(bodyBytes, &req); err != nil {
+		panic(fmt.Errorf("failed to parse request body as JSON: %s", err.Error()))
+	}
+	
 	h.Logger.Debugf("webhook request: %#v", req)
 
 	if !req.PullRequest.Merged {
