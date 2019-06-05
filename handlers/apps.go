@@ -2,7 +2,7 @@ package handlers
 
 
 import (
-
+	"fmt"
 	"github.com/knative-scout/app-api/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"net/http"
@@ -62,14 +62,14 @@ func getDataFromDB(query string, tags string, categories string, h AppsHandler )
 	result, err := h.MDbApps.Find(h.Ctx, searchBson)
 
 	if err != nil {
-		 panic(err)
+		 panic(fmt.Errorf("failed to retrieve data from db %s", err.Error()))
 
 	}
 
 	for result.Next(h.Ctx) {
 		a := models.App{}
 		if err = result.Decode(&a); err != nil {
-			panic(err)
+			panic(fmt.Errorf("readTasks: couldn't make to-do item ready for display: %s", err.Error()))
 		}
 		ret = append(ret,a)
 	}
