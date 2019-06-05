@@ -156,10 +156,20 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	
+
+	// Endpoint :"/health"
 	router.Handle("/health", handlers.HealthHandler{
 		baseHandler.GetChild("health"),
 	}).Methods("GET")
+
+	// Endpoint :"/search"
+	router.Handle("/apps", handlers.AppSearchHandler{
+		baseHandler.GetChild("AppSearch"),
+	}).Methods("GET")
+
+
+
+
 
 	// {{{1 Start HTTP server
 	logger.Debug("starting HTTP server")

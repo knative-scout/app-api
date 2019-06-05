@@ -28,8 +28,7 @@ func (h PanicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, err := fmt.Fprintln(w, "{\"error\": \"internal server error\"}")
 			if err != nil {
-				h.Logger.Fatalf("failed to generic panic response to client: %s",
-					err.Error())
+				h.Logger.Fatalf("failed to send panic response: %s", err.Error())
 			}
 		}
 	}()
