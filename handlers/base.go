@@ -37,6 +37,7 @@ func (h BaseHandler) GetChild(prefix string) BaseHandler {
 		Ctx: h.Ctx,
 		Logger: h.Logger.GetChild(prefix),
 		MDb: h.MDb,
+		MDbApps: h.MDbApps,
 	}
 }
 
