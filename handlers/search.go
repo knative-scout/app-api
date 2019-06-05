@@ -9,15 +9,15 @@ import (
 	"strings"
 )
 
-// AppsHandler is used search apps and return result
+// AppSearchHandler is used search apps and return result
 // in case of an empty query, it returns all the apps in the database
 
-type AppsHandler struct {
+type AppSearchHandler struct {
 	BaseHandler
 }
 
 // ServeHTTP implements http.Handler
-func (h AppsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h AppSearchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	//gets all the optional parameters passed in the URL
 	vars := r.URL.Query()
@@ -25,13 +25,18 @@ func (h AppsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	tags := vars.Get("tags")
 	categories := vars.Get("categories")
 
-	resp := getDataFromDB(query, tags, categories, h)
+	result := getDataFromDB(query, tags, categories, h)
+
+	resp := map[string][]models.App{
+		"apps":result,
+	}
+
 
 	h.RespondJSON(w, http.StatusOK, resp)
 }
 
 
-func getDataFromDB(query string, tags string, categories string, h AppsHandler ) []models.App{
+func getDataFromDB(query string, tags string, categories string, h AppSearchHandler ) []models.App{
 
 	// if query, tags or categories are empty strings return all apps as result
 	// else, construct a bson query will all the required parameters and find in database

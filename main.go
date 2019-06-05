@@ -163,8 +163,8 @@ func main() {
 	}).Methods("GET")
 
 	// Endpoint :"/search"
-	router.Handle("/apps", handlers.AppsHandler{
-		baseHandler.GetChild("apps"),
+	router.Handle("/apps", handlers.AppSearchHandler{
+		baseHandler.GetChild("AppSearch"),
 	}).Methods("GET")
 
 
