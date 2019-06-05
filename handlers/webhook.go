@@ -9,11 +9,31 @@ import (
 	"encoding/hex"
 
 	"github.com/knative-scout/app-api/models"
+
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // WebhookHandler handles registry repository pull request webhook requests
 type WebhookHandler struct {
 	BaseHandler
+}
+
+// webhookRequest is a request made by GitHub to the webhook endpoint
+type webhookRequest struct {
+	// Action is the pull request action which the request describes
+	Action string `json:"action"`
+
+	// Number is the pull request number
+	Number int `json:"number"`
+
+	// PullRequest itself
+	PullRequest pullRequest `json:"pull_request"`
+}
+
+// pullRequest holds the relevant fields of a GitHub API pull request object
+type pullRequest struct {
+	// Merged indicates if the pull request has been merged yet
+	Merged bool `json:"merged"`
 }
 
 // ServeHTTP implements net.Handler
@@ -72,6 +92,21 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// {{{1 Check if PR is merged as a result
+	var req webhookRequest
+	h.ParseJSON(r, &req)
+
+	h.Logger.Debugf("webhook request: %#v", req)
+
+	if !req.PullRequest.Merged {
+		h.Logger.Debug("not merged yet")
+
+		h.RespondJSON(w, http.StatusOK, map[string]bool{
+			"ok": true,
+		})
+		return
+	}
+
 	// {{{1 Rebuild database
 	// {{{2 Load all apps
 	apps, err := models.LoadAllAppsFromRegistry(h.Ctx, h.Gh, h.Cfg)
@@ -79,16 +114,22 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		panic(fmt.Errorf("failed to load apps: %s", err.Error()))
 	}
 
-	// {{{2 Upsert
+	// {{{2 Delete old apps
+	_, err = h.MDbApps.DeleteMany(h.Ctx, bson.D{}, nil)
+	if err != nil {
+		panic(fmt.Errorf("failed to delete old apps from db: %s", err.Error()))
+	}
+
+	// {{{2 Insert
 	insertDocs := []interface{}{}
 
 	for _, app := range apps {
 		insertDocs = append(insertDocs, *app)
 	}
 	
-	_, err = mDbApps.InsertMany(ctx, insertDocs, nil)
+	_, err = h.MDbApps.InsertMany(h.Ctx, insertDocs, nil)
 	if err != nil {
-		loadLogger.Fatalf("failed to insert apps into db: %s", err.Error())
+		panic(fmt.Errorf("failed to insert apps into db: %s", err.Error()))
 	}
 
 	h.RespondJSON(w, http.StatusOK, map[string]bool{
