@@ -9,7 +9,9 @@ import (
 	"strings"
 )
 
-// HealthHandler is used to determine if the server is running
+// AppsHandler is used search apps and return result
+// in case of an empty query, it returns all the apps in the database
+
 type AppsHandler struct {
 	BaseHandler
 }
@@ -17,13 +19,11 @@ type AppsHandler struct {
 // ServeHTTP implements http.Handler
 func (h AppsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
-	//gets all the optional parametres passed in the URL
+	//gets all the optional parameters passed in the URL
 	vars := r.URL.Query()
-
-	//h.Logger.Debugf("%#v", vars)
-	query:=vars.Get("query")
-	tags:= vars.Get("tags")
-	categories:=vars.Get("categories")
+	query := vars.Get("query")
+	tags := vars.Get("tags")
+	categories := vars.Get("categories")
 
 	resp := getDataFromDB(query, tags, categories, h)
 
@@ -33,8 +33,8 @@ func (h AppsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func getDataFromDB(query string, tags string, categories string, h AppsHandler ) []models.App{
 
-	//if query, tags or categories are empty strings return all apps as result
-
+	// if query, tags or categories are empty strings return all apps as result
+	// else, construct a bson query will all the required parameters and find in database
 	searchBson := bson.D{}
 	if len(query)>0{
 		searchBson = append(searchBson, bson.E{
@@ -52,17 +52,20 @@ func getDataFromDB(query string, tags string, categories string, h AppsHandler )
 	}
 
 
-	ret := []models.App{}
+	ret := []models.App{}  //to store all result as an array of json files
 	result, err := h.MDbApps.Find(h.Ctx, searchBson)
 
 	if err != nil {
 		 h.Logger.Fatalf("failed to retrieve data from db %s", err)
+		 panic(err)
+
 	}
 
 	for result.Next(h.Ctx) {
 		a := models.App{}
 		if err = result.Decode(&a); err != nil {
 			h.Logger.Fatalf("readTasks: couldn't make to-do item ready for display: %v", err)
+			panic(err)
 		}
 		ret = append(ret,a)
 	}

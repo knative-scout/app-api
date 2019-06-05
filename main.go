@@ -165,7 +165,7 @@ func main() {
 	// Endpoint :"/search"
 	router.Handle("/apps", handlers.AppsHandler{
 		baseHandler.GetChild("apps"),
-	}).Methods("GET")//.Queries("query", "{[0-9]*?}","tags","{[0-9]*?}")
+	}).Methods("GET")
 
 
 
