@@ -170,7 +170,7 @@ func main() {
 	}).Methods("GET")
 
 	// !!! Must always be last !!!
-	router.Handle("*", handlers.PreFlightOptionsHandler{
+	router.Handle("/", handlers.PreFlightOptionsHandler{
 		baseHandler.GetChild("pre-flight-options"),
 	}).Methods("OPTIONS")
 
