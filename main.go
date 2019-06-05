@@ -14,6 +14,7 @@ import (
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
 	"github.com/google/go-github/v25/github"
 	"golang.org/x/oauth2"
 )
@@ -69,14 +70,17 @@ func main() {
 	// {{{2 Connect
 	logger.Debug("connecting to Db")
 	
-	mDb, err := mongo.Connect(ctx, mDbConnOpts)
+	mDbClient, err := mongo.Connect(ctx, mDbConnOpts)
 	if err != nil {
 		logger.Fatalf("failed to connect to database: %s", err.Error())
 	}
 
-	if err := mDb.Ping(ctx, nil); err != nil {
+	if err := mDbClient.Ping(ctx, nil); err != nil {
 		logger.Fatalf("failed to test database connection: %s", err.Error())
 	}
+
+	mDb := mDbClient.Database(cfg.DbName)
+	mDbApps := mDb.Collection("apps")
 
 	logger.Debug("connected to Db")
 
@@ -100,12 +104,53 @@ func main() {
 	}
 
 	logger.Debug("authenticated with GitHub API")
-	
+
+	// {{{1 Load serverless application registry repository state if database is empty
+	go func() {
+		loadLogger := logger.GetChild("populate-apps-db")
+
+		loadLogger.Debug("checking if Db must be populated from GitHub registry repository")
+		
+		// {{{1 Check if empty
+		docCount, err := mDbApps.CountDocuments(ctx, bson.D{{}}, nil)
+		if err != nil {
+			loadLogger.Fatalf("failed to get documents count in apps collection: %s",
+				err.Error())
+		}
+
+		if docCount > 0 {
+			loadLogger.Debugf("no load required, found %d app(s) in database",
+				docCount)
+			return
+		}
+
+		// {{{1 Load all apps if empty
+		apps, err := models.LoadAllAppsFromRegistry(ctx, gh, cfg)
+		if err != nil {
+			loadLogger.Fatalf("failed to load apps: %s", err.Error())
+		}
+
+		// {{{1 Insert
+		insertDocs := []interface{}{}
+
+		for _, app := range apps {
+			insertDocs = append(insertDocs, *app)
+		}
+		
+		_, err = mDbApps.InsertMany(ctx, insertDocs, nil)
+		if err != nil {
+			loadLogger.Fatalf("failed to insert apps into db: %s", err.Error())
+		}
+
+		loadLogger.Debugf("loaded %d app(s) into database", len(apps))
+	}()
+
 	// {{{1 Router
 	baseHandler := handlers.BaseHandler{
 		Ctx: ctx,
 		Logger: logger.GetChild("handlers"),
 		MDb: mDb,
+		MDbApps: mDbApps,
 		Gh: gh,
 	}
 

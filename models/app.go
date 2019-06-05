@@ -133,6 +133,36 @@ func getGhFileContent(ctx context.Context, gh*github.Client, cfg *config.Config,
 	return txt, nil
 }
 
+// LoadAllAppsFromRegistry loads all serverless applications from the registry repository
+func LoadAllAppsFromRegistry(ctx context.Context, gh *github.Client, cfg *config.Config) ([]*App, error) {
+	// {{{1 Get names of all folders at the top level
+	_, contents, _, err := gh.Repositories.GetContents(ctx, cfg.GhRegistryRepoOwner,
+		cfg.GhRegistryRepoName, "/", nil)
+	if err != nil {
+		return nil, fmt.Errorf("error listing top levle repository contents via "+
+			"GitHub API: %s", err.Error())
+	}
+
+	// {{{1 Loads each folder as an app
+	apps := []*App{}
+	
+	for _, content := range contents {
+		if *content.Type == "file" {
+			continue
+		}
+
+		app, err := LoadAppFromRegistry(ctx, gh, cfg, *content.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load \"%s\" app: %s",
+				*content.Name, err.Error())
+		}
+
+		apps = append(apps, app)
+	}
+
+	return apps, nil
+}
+
 // LoadAppFromRegistry loads a single serverless application from the serverless application
 // registry repository.
 func LoadAppFromRegistry(ctx context.Context, gh *github.Client, cfg *config.Config, appName string) (*App, error) {
