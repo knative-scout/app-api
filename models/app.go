@@ -92,6 +92,36 @@ type manifestFile struct {
 	Maintainer string `yaml:"maintainer" json:"author" bson:"maintainer" validate:"required"`
 }
 
+// AppSrcFormatError indicates the source files in the registry repository for an application are misformatted
+// These errors should be presentable to the user
+type AppSrcFormatError struct {
+	// name of file or directory which error relates to, can be empty if error refers to the general app
+	name string
+	
+	// public is a user facing error description
+	public string
+
+	// error holds the technical non-user facing error details, if nil public field will be displayed
+	error error
+}
+
+// Error implements the Error interface
+func (e AppSrcFormatError) Error() string {
+	out := ""
+
+	if len(e.name) > 0 {
+		out += fmt.Sprintf("formatting error in %s: ", e.name)
+	}
+
+	out += e.public
+
+	if e.error != nil {
+		out += fmt.Sprintf(": %s", err.Error())
+	}
+
+	return out
+}
+
 // getGhURLsFromDir returns an array of GitHub HTML links to files in the specified directory
 // in the app registry repository.
 func getGhURLsFromDir(ctx context.Context, gh *github.Client, cfg *config.Config, prefix string) ([]string, error) {
@@ -174,7 +204,7 @@ func LoadAppFromRegistry(ctx context.Context, gh *github.Client, cfg *config.Con
 	}
 
 	if len(dirContents) == 0 {
-		return nil, fmt.Errorf("app directory is empty")
+		return nil, AppSrcFormatError{"", "app directory is empty", nil}
 	}
 
 	// {{{1 Parse contents into App
@@ -196,8 +226,11 @@ func LoadAppFromRegistry(ctx context.Context, gh *github.Client, cfg *config.Con
 	for _, content := range dirContents {
 		// {{{2 Check if file / directory is supposed to be there
 		if _, ok := found[*content.Name]; !ok {
-			return nil, fmt.Errorf("%s \"%s\" is not allowed to exist",
-				content.Type, content.Name)
+			return nil, AppSrcFormatError{
+				*content.Name,
+				fmt.Sprintf("%s not allowed to exist", content.Type),
+				nil,
+			}
 		}
 
 		found[*content.Name] = true
@@ -216,19 +249,28 @@ func LoadAppFromRegistry(ctx context.Context, gh *github.Client, cfg *config.Con
 				// {{{2 Parse as YAML
 				err = yaml.UnmarshalStrict([]byte(txt), &app.manifestFile)
 				if err != nil {
-					return nil, fmt.Errorf("failed to parse "+
-						"manifest.yaml file: %s", err.Error())
+					return nil, AppSrcFormatError{
+						*content.Name,
+						fmt.Sprintf("failed to parse as YAML: %s", err.Error()),
+						nil,
+					}
 				}
 
 				// {{{2 Using custom validation for author and maintainer fields
 				if !contactStringExp.Match([]byte(app.manifestFile.Author)) {
-					return nil, fmt.Errorf("manifest.yaml file is invalid: "+
-						"author field must be in format \"NAME <EMAIL>\"")
+					return nil, AppSrcFormatError{
+						*content.Name,
+						"author field must be in format \"NAME <EMAIL>\"",
+						nil,
+					}
 				}
 
 				if !contactStringExp.Match([]byte(app.manifestFile.Maintainer)) {
-					return nil, fmt.Errorf("manifest.yaml file is invalid: "+
-						"maintainer field must be in format \"NAME <EMAIL>\"")
+					return nil, AppSrcFormatError{
+						*content.Name,
+						"maintainer field must be in format \"NAME <EMAIL>\"",
+						nil,
+					}
 				}
 			} else if *content.Name == "README.md" {
 				// {{{2 Get content
@@ -240,7 +282,11 @@ func LoadAppFromRegistry(ctx context.Context, gh *github.Client, cfg *config.Con
 				}
 
 				if len(txt) == 0 {
-					return nil, fmt.Errorf("file README.md cannot be empty")
+					return nil, AppSrcFormatError{
+						*content.Name,
+						"file cannot be empty",
+						nil,
+					}
 				}
 
 				app.Description = txt
@@ -283,7 +329,11 @@ func LoadAppFromRegistry(ctx context.Context, gh *github.Client, cfg *config.Con
 	validate := validator.New()
 	err = validate.Struct(app)
 	if err != nil {
-		return nil, fmt.Errorf("app is invalid: %s", err.Error())
+		return nil, AppSrcFormatError{
+			"",
+			fmt.Sprintf("a piece of data in your app is invalid: %s", err.Error()),
+			nil,
+		}
 	}
 
 	return &app, nil
