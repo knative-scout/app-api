@@ -157,24 +157,22 @@ func main() {
 
 	router := mux.NewRouter()
 
-	// Endpoint :"/health"
 	router.Handle("/health", handlers.HealthHandler{
 		baseHandler.GetChild("health"),
 	}).Methods("GET")
 
-	// Endpoint :"/apps/id"
 	router.Handle("/apps/{id}", handlers.AppByIDHandler {
-		baseHandler.GetChild("apps"),
+		baseHandler.GetChild("get-app-by-id"),
 	}).Methods("GET")
 
-	// Endpoint :"/search"
 	router.Handle("/apps", handlers.AppSearchHandler{
-		baseHandler.GetChild("AppSearch"),
+		baseHandler.GetChild("app-search"),
 	}).Methods("GET")
 
-
-
-
+	// !!! Must always be last !!!
+	router.Handle("*", handlers.PreFlightOptionsHandler{
+		baseHandler.GetChild("pre-flight-options"),
+	}).Methods("OPTIONS")
 
 	// {{{1 Start HTTP server
 	logger.Debug("starting HTTP server")
@@ -185,7 +183,10 @@ func main() {
 			BaseHandler: baseHandler,
 			Handler: handlers.ReqLoggerHandler{
 				BaseHandler: baseHandler,
-				Handler: router,
+				Handler: handlers.CORSHandler{
+					BaseHandler: baseHandler,
+					Handler: router,
+				},
 			},
 		},
 	}
