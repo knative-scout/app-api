@@ -25,7 +25,7 @@ func (h AppSearchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	tags := vars.Get("tags")
 	categories := vars.Get("categories")
 
-	result := getDataFromDB(query, tags, categories, h)
+	result := getSearchDataFromDB(query, tags, categories, h)
 
 	resp := map[string][]models.App{
 		"apps":result,
@@ -36,7 +36,7 @@ func (h AppSearchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 
-func getDataFromDB(query string, tags string, categories string, h AppSearchHandler ) []models.App{
+func getSearchDataFromDB(query string, tags string, categories string, h AppSearchHandler ) []models.App{
 
 	// if query, tags or categories are empty strings return all apps as result
 	// else, construct a bson query will all the required parameters and find in database

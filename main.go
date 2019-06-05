@@ -162,6 +162,11 @@ func main() {
 		baseHandler.GetChild("health"),
 	}).Methods("GET")
 
+	// Endpoint :"/apps/id"
+	router.Handle("/apps/{id}", handlers.AppByIDHandler {
+		baseHandler.GetChild("apps"),
+	}).Methods("GET")
+
 	// Endpoint :"/search"
 	router.Handle("/apps", handlers.AppSearchHandler{
 		baseHandler.GetChild("AppSearch"),
