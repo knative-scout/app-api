@@ -10,7 +10,7 @@ import (
 )
 
 // HealthHandler is used to determine if the server is running
-type AppsHandler struct {
+type AppHandler struct {
 	BaseHandler
 }
 // ServeHTTP implements http.Handler
@@ -27,10 +27,10 @@ func (h AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 
-func getDataFromDB(id string, h AppsHandler ) []models.App{
+func getDataFromDB(id string, h AppHandler ) []models.App{
 
 	ret := []models.App{}
-	result, err := h.MDbApps.Find(h.Ctx, bson.D{{"app_id" : id}})
+	result, err := h.MDbApps.Find(h.Ctx, bson.D{{"app_id", id}})
 
 	if err != nil {
 		 h.Logger.Fatalf("failed to retrieve data from db %s", err)
