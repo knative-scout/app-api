@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"encoding/json"
 
+	"github.com/knative-scout/app-api/config"
+
 	"github.com/Noah-Huppert/golog"
 	"go.mongodb.org/mongo-driver/mongo"
 	"github.com/google/go-github/v25/github"
@@ -20,6 +22,9 @@ type BaseHandler struct {
 
 	// Logger logs information
 	Logger golog.Logger
+
+	// Cfg is the application configuration
+	Cfg *config.Config
 
 	// MDb is a MongoDB database instance
 	MDb *mongo.Database
