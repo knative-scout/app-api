@@ -150,6 +150,7 @@ func main() {
 	baseHandler := handlers.BaseHandler{
 		Ctx: ctx,
 		Logger: logger.GetChild("handlers"),
+		Cfg: cfg,
 		MDb: mDb,
 		MDbApps: mDbApps,
 		Gh: gh,
