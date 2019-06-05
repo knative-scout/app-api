@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"encoding/json"
 
+	"github.com/knative-scout/app-api/config"
+
 	"github.com/Noah-Huppert/golog"
 	"go.mongodb.org/mongo-driver/mongo"
 	"github.com/google/go-github/v25/github"
@@ -21,6 +23,9 @@ type BaseHandler struct {
 	// Logger logs information
 	Logger golog.Logger
 
+	// Cfg is the application configuration
+	Cfg *config.Config
+
 	// MDb is a MongoDB database instance
 	MDb *mongo.Database
 
@@ -33,12 +38,9 @@ type BaseHandler struct {
 
 // GetChild makes a child instance of the base handler with a prefix
 func (h BaseHandler) GetChild(prefix string) BaseHandler {
-	return BaseHandler{
-		Ctx: h.Ctx,
-		Logger: h.Logger.GetChild(prefix),
-		MDb: h.MDb,
-		MDbApps: h.MDbApps,
-	}
+	h.Logger.GetChild(prefix)
+
+	return h
 }
 
 // RespondJSON sends an object as a JSON encoded response
