@@ -65,6 +65,9 @@ func (c Config) String() (string, error) {
 		c.GhToken = "REDACTED_NOT_EMPTY"
 	}
 
+	if c.GhWebhookSecret != "" {
+		c.GhWebhookSecret = "REDACTED_NOT_EMPTY"
+	}
 
 	configBytes, err := json.Marshal(c)
 	if err != nil {
