@@ -43,7 +43,23 @@ const VerificationStatusBad VerStatusT = "bad"
 // App is a serverless application from the repository
 // Stores the json file format of the response
 type App struct {
-	manifestFile
+	// Name to display to users
+	Name string `json:"name" bson:"name" validate:"required"`
+	
+	// Tagline is a short description of the app
+	Tagline string `json:"tagline" bson:"tagline" validate:"required"`
+
+	// Tags is a lists of tags
+	Tags []string `json:"tags" bson:"tags" validate:"required"`
+
+	// Categories is a list of categories
+	Categories []string `json:"categories" bson:"categories" validate:"required"`
+
+	// Author is the person who created the app
+	Author string `yaml:"author" json:"author" bson:"author" validate:"required"`
+
+	// Maintainer is the person who will support the app
+	Maintainer string `yaml:"maintainer" json:"author" bson:"maintainer" validate:"required"`
 	
 	// AppID is a human and computer readable identifier for the application
 	AppID string `json:"id" bson:"app_id" validate:"required"`
@@ -74,22 +90,22 @@ type App struct {
 // manifestFile holds some of the metadata about a serverless application.
 type manifestFile struct {
 	// Name to display to users
-	Name string `yaml:"name" json:"name" bson:"name" validate:"required"`
+	Name string `yaml:"name"`
 	
 	// Tagline is a short description of the app
-	Tagline string `yaml:"tagline" json:"tagline" bson:"tagline" validate:"required"`
+	Tagline string `yaml:"tagline"`
 
 	// Tags is a lists of tags
-	Tags []string `yaml:"tags" json:"tags" bson:"tags" validate:"required"`
+	Tags []string `yaml:"tags"`
 
 	// Categories is a list of categories
-	Categories []string `yaml:"categories" json:"categories" bson:"categories" validate:"required"`
+	Categories []string `yaml:"categories"`
 
 	// Author is the person who created the app
-	Author string `yaml:"author" json:"author" bson:"author" validate:"required"`
+	Author string `yaml:"author"`
 
 	// Maintainer is the person who will support the app
-	Maintainer string `yaml:"maintainer" json:"author" bson:"maintainer" validate:"required"`
+	Maintainer string `yaml:"maintainer"`
 }
 
 // AppSrcFormatError indicates the source files in the registry repository for an application are misformatted
@@ -247,7 +263,8 @@ func LoadAppFromRegistry(ctx context.Context, gh *github.Client, cfg *config.Con
 				}
 				
 				// {{{2 Parse as YAML
-				err = yaml.UnmarshalStrict([]byte(txt), &app.manifestFile)
+				var manifest manifestFile
+				err = yaml.UnmarshalStrict([]byte(txt), &manifest)
 				if err != nil {
 					return nil, AppSrcFormatError{
 						*content.Name,
@@ -257,21 +274,22 @@ func LoadAppFromRegistry(ctx context.Context, gh *github.Client, cfg *config.Con
 				}
 
 				// {{{2 Using custom validation for author and maintainer fields
-				if !contactStringExp.Match([]byte(app.manifestFile.Author)) {
-					return nil, AppSrcFormatError{
-						*content.Name,
-						"author field must be in format \"NAME <EMAIL>\"",
-						nil,
-					}
+				if !contactStringExp.Match([]byte(manifest.Author)) {
+					return nil, fmt.Errorf("manifest.yaml file is invalid: "+
+						"author field must be in format \"NAME <EMAIL>\"")
 				}
 
-				if !contactStringExp.Match([]byte(app.manifestFile.Maintainer)) {
-					return nil, AppSrcFormatError{
-						*content.Name,
-						"maintainer field must be in format \"NAME <EMAIL>\"",
-						nil,
-					}
+				if !contactStringExp.Match([]byte(manifest.Maintainer)) {
+					return nil, fmt.Errorf("manifest.yaml file is invalid: "+
+						"maintainer field must be in format \"NAME <EMAIL>\"")
 				}
+
+				app.Name = manifest.Name
+				app.Tagline = manifest.Tagline
+				app.Tags = manifest.Tags
+				app.Categories = manifest.Categories
+				app.Author = manifest.Author
+				app.Maintainer = manifest.Maintainer
 			} else if *content.Name == "README.md" {
 				// {{{2 Get content
 				txt, err := getGhFileContent(ctx, gh, cfg,
