@@ -6,6 +6,7 @@ import (
 	"github.com/knative-scout/app-api/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"net/http"
+	"strings"
 )
 
 // HealthHandler is used to determine if the server is running
@@ -33,19 +34,26 @@ func (h AppsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func getDataFromDB(query string, tags string, categories string, h AppsHandler ) []models.App{
 
 	//if query, tags or categories are empty strings return all apps as result
-	//if len(query)>0{
-	//	h.Logger.Debugf("%T\n",query)
-	//}
-	//if len(tags)>0{
-	//	h.Logger.Debugf("%T\n",tags)
-	//}
-	//if len(categories)>0{
-	//	h.Logger.Debugf("%T\n",categories)
-	//}
 
-	//var ret []models.App
+	searchBson := bson.D{}
+	if len(query)>0{
+		searchBson = append(searchBson, bson.E{
+			"description",
+				bson.D{{"$regex", ".*"+query+".*"}},
+		})
+	}
+	if len(tags)>0{
+		tags := strings.Split(tags, ",")
+		searchBson = append(searchBson, bson.E{"tags", bson.D{{"$in", tags}}})
+	}
+	if len(categories)>0{
+		categories := strings.Split(categories, ",")
+		searchBson = append(searchBson, bson.E{"categories", bson.D{{"$in", categories}}})
+	}
+
+
 	ret := []models.App{}
-	result, err := h.MDbApps.Find(h.Ctx, bson.D{{}})
+	result, err := h.MDbApps.Find(h.Ctx, searchBson)
 
 	if err != nil {
 		 h.Logger.Fatalf("failed to retrieve data from db %s", err)
