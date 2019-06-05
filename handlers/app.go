@@ -27,7 +27,7 @@ func (h AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 
-func getDataFromDB(id string, h AppHandler ) []models.App{
+func getDataFromDB(id string, h AppHandler ) models.App{
 
 	ret := []models.App{}
 	result, err := h.MDbApps.Find(h.Ctx, bson.D{{"app_id", id}})
@@ -43,5 +43,5 @@ func getDataFromDB(id string, h AppHandler ) []models.App{
 		}
 		ret = append(ret,a)
 	}
-	return ret
+	return ret[0]
 }
