@@ -162,7 +162,7 @@ func main() {
 		baseHandler.GetChild("health"),
 	}).Methods("GET")
 
-	router.Handle("/apps/{id}", handlers.AppByIDHandler {
+	router.Handle("/apps/id/{id}", handlers.AppByIDHandler {
 		baseHandler.GetChild("get-app-by-id"),
 	}).Methods("GET")
 

@@ -62,7 +62,7 @@ Response:
 - `apps` (List[[App Model](#app-model)])
 
 ### Get App By ID
-`GET /apps/<app_id>`
+`GET /apps/id/<app_id>`
 
 Get application by ID.
 
