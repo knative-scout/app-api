@@ -170,7 +170,7 @@ func main() {
 		baseHandler.GetChild("app-search"),
 	}).Methods("GET")
 
-	router.Handle("/tags", handlers.AppTagsHandler{
+	router.Handle("/apps/tags", handlers.AppTagsHandler{
 		baseHandler.GetChild("get-apps-tags"),
 	}).Methods("GET")
 
