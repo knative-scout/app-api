@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: app-api
-          image: docker.io/kscout/app-api:dev-1
+          image: docker.io/kscout/app-api:dev-8
           env:
             - name: APP_HTTP_ADDR
               value: ":5000"
@@ -41,8 +41,13 @@ spec:
             - name: APP_GH_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: gh-api-credentials
-                  key: token
+                  name: gh-api-configuration
+                  key: apiToken
+            - name: APP_GH_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: gh-api-configuration
+                  key: webhookSecret
           ports:
             - name: http
               containerPort: 5000
@@ -81,7 +86,9 @@ metadata:
   name: app-api
   namespace: knative-scout
   labels:
-    app: app-api    
+    app: app-api
+  annotations:
+    kubernetes.io/tls-acme: "true"
 spec:
   host: api.kscout.io
   path: /
@@ -91,6 +98,9 @@ spec:
     weight: 100
   port:
     targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
 status:
   ingress:
     - host: api.kscout.io

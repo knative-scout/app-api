@@ -150,6 +150,7 @@ func main() {
 	baseHandler := handlers.BaseHandler{
 		Ctx: ctx,
 		Logger: logger.GetChild("handlers"),
+		Cfg: cfg,
 		MDb: mDb,
 		MDbApps: mDbApps,
 		Gh: gh,
@@ -173,7 +174,9 @@ func main() {
 		baseHandler.GetChild("get-apps-tags"),
 	}).Methods("GET")
 
-
+	router.Handle("/apps/webhook", handlers.WebhookHandler{
+		baseHandler.GetChild("webhook"),
+	}).Methods("POST")
 
 	// !!! Must always be last !!!
 	router.Handle("/", handlers.PreFlightOptionsHandler{

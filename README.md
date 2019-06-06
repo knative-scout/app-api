@@ -24,7 +24,7 @@ make db
 
 ## Configuration
 For local development the default configuration values will suffice with the 
-exception `APP_GH_TOKEN`.
+exception of `APP_GH_TOKEN` and `APP_GH_WEBHOOK_SECRET`. 
 
 Configuration is passed via environment variables.
 
@@ -40,6 +40,8 @@ Configuration is passed via environment variables.
   registry repository, defaults to `knative-scout`
 - `APP_GH_REGISTRY_REPO_NAME` (String): Name of serverless application
   registry repository, defaults to `serverless-apps`
+- `APP_GH_WEBHOOK_SECRET` (String): Secret value which was provided during the
+  [GitHub registry repository Webhook](#webhook) creation
 
 ## Run
 Start the server by running:
