@@ -10,58 +10,58 @@ import (
 )
 
 
-// AppTagsHandler is used to get all the tags stored in the database,
-// can also be used to get tags of matched apps if query is provided
-type AppTagsHandler struct {
+// AppCategoriesHandler is used to get all the categories stored in the database,
+// can also be used to get categories of matched apps if query is provided
+type AppCategoriesHandler struct {
 	BaseHandler
 }
 
 // ServeHTTP implements http.Handler
-func (h AppTagsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h AppCategoriesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	//gets all the optional parameters passed in the URL
 	vars := r.URL.Query()
 	query := vars.Get("query")
 
-	result := getTagsFromDB(query, h)
+	result := getCategoriesFromDB(query, h)
 
 	resp := map[string][]string{
-		"tags":result,
+		"categories":result,
 	}
 
 	h.RespondJSON(w, http.StatusOK, resp)
 }
 
 
-func getTagsFromDB(query string, h AppTagsHandler ) []string {
+func getCategoriesFromDB(query string, h AppCategoriesHandler) []string {
 
-	tagsBson := bson.D{}
+	categoriesBson := bson.D{}
 
 	// if we have additional parametres, only get the tags of matched apps.
 	if len(query)>0{
 		query := strings.Split(query, ",")
-		tagsBson = append(tagsBson, bson.E{
-			"tags",
+		categoriesBson = append(categoriesBson, bson.E{
+			"categories",
 			bson.D{{"$in", query}},
 		})
 	}
 
 	// Declaring structure to set projection in find. used to single out the column. for more info see *findoptions in mongo
 	type fields struct {
-		Tags int `bson:"tags"`
+		Categories int `bson:"categories"`
 	}
 
-	// Declaring structure to decode the output from the mongo tags search query
-	type tagsRes struct{
-		Tags []string `json:"tags" bson:"tags"`
+	// Declaring structure to decode the output from the mongo categories search query
+	type categoriesRes struct{
+		Categories []string `json:"categories" bson:"categories"`
 	}
 
 	// setting projection
 	projection := fields{
-		Tags: 1,
+		Categories: 1,
 	}
 
-	result, err := h.MDbApps.Find(h.Ctx, tagsBson, options.Find().SetProjection(projection) )
+	result, err := h.MDbApps.Find(h.Ctx, categoriesBson, options.Find().SetProjection(projection) )
 	if err != nil {
 		panic(fmt.Errorf("unable to query database", err.Error()))
 	}
@@ -70,11 +70,11 @@ func getTagsFromDB(query string, h AppTagsHandler ) []string {
 	ret := []string{}
 
 	for result.Next(h.Ctx) {
-		a := tagsRes{}
+		a := categoriesRes{}
 		if err = result.Decode(&a); err != nil {
 			panic(fmt.Errorf("Error in decode %s", err.Error()))
 		}
-		ret= append(ret, a.Tags...)
+		ret= append(ret, a.Categories...)
 
 	}
 
