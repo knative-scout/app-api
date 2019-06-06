@@ -44,7 +44,7 @@ func getSearchDataFromDB(query string, tags string, categories string, h AppSear
 	if len(query)>0{
 		searchBson = append(searchBson, bson.E{
 			"description",
-				bson.D{{"$regex", ".*"+query+".*"}},
+				bson.D{{"$regex", ".*"+query+".*i"}},
 		})
 	}
 	if len(tags)>0{
