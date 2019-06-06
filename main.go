@@ -170,6 +170,14 @@ func main() {
 		baseHandler.GetChild("app-search"),
 	}).Methods("GET")
 
+	router.Handle("/apps/tags", handlers.AppTagsHandler{
+		baseHandler.GetChild("get-apps-tags"),
+	}).Methods("GET")
+
+	router.Handle("/apps/categories", handlers.AppCategoriesHandler{
+		baseHandler.GetChild("get-apps-categories"),
+	}).Methods("GET")
+
 	router.Handle("/apps/webhook", handlers.WebhookHandler{
 		baseHandler.GetChild("webhook"),
 	}).Methods("POST")
