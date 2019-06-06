@@ -174,7 +174,7 @@ func main() {
 		baseHandler.GetChild("get-apps-tags"),
 	}).Methods("GET")
 
-	router.Handle("/categories", handlers.AppCategoriesHandler{
+	router.Handle("/apps/categories", handlers.AppCategoriesHandler{
 		baseHandler.GetChild("get-apps-categories"),
 	}).Methods("GET")
 
