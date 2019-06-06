@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: app-api
-          image: docker.io/kscout/app-api:dev-8
+          image: docker.io/kscout/app-api:dev-9
           env:
             - name: APP_HTTP_ADDR
               value: ":5000"
