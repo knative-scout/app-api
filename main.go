@@ -169,6 +169,12 @@ func main() {
 		baseHandler.GetChild("app-search"),
 	}).Methods("GET")
 
+	router.Handle("/tags", handlers.AppTagsHandler{
+		baseHandler.GetChild("get-apps-tags"),
+	}).Methods("GET")
+
+
+
 	// !!! Must always be last !!!
 	router.Handle("/", handlers.PreFlightOptionsHandler{
 		baseHandler.GetChild("pre-flight-options"),

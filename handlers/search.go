@@ -74,7 +74,7 @@ func getSearchDataFromDB(query string, tags string, categories string, h AppSear
 	for result.Next(h.Ctx) {
 		a := models.App{}
 		if err = result.Decode(&a); err != nil {
-			panic(fmt.Errorf("readTasks: couldn't make to-do item ready for display: %s", err.Error()))
+			panic(fmt.Errorf("Unable to get apps from database: %s", err.Error()))
 		}
 		ret = append(ret,a)
 	}
