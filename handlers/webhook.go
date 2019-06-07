@@ -115,7 +115,13 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// {{{1 Rebuild database
 	// {{{2 Load all apps
-	apps, err := models.LoadAllAppsFromRegistry(h.Ctx, h.Gh, h.Cfg)
+	appLoader := models.AppLoader{
+		Ctx: h.Ctx,
+		Gh: h.Gh,
+		Cfg: h.Cfg,
+	}
+	
+	apps, err := appLoader.LoadAllAppsFromRegistry(*req.PullRequest.Head.Ref)
 	if err != nil {
 		panic(fmt.Errorf("failed to load apps: %s", err.Error()))
 	}

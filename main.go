@@ -126,7 +126,13 @@ func main() {
 		}
 
 		// {{{1 Load all apps if empty
-		apps, err := models.LoadAllAppsFromRegistry(ctx, gh, cfg)
+		appLoader := models.AppLoader{
+			Ctx: ctx,
+			Gh: gh,
+			Cfg: cfg,
+		}
+		
+		apps, err := appLoader.LoadAllAppsFromRegistry("")
 		if err != nil {
 			loadLogger.Fatalf("failed to load apps: %s", err.Error())
 		}
