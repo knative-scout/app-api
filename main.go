@@ -82,6 +82,7 @@ func main() {
 
 	mDb := mDbClient.Database(cfg.DbName)
 	mDbApps := mDb.Collection("apps")
+	mDbSubmissions := mDb.Collection("submissions")
 
 	logger.Debug("connected to Db")
 
@@ -109,7 +110,7 @@ func main() {
 	// {{{1 Load serverless application registry repository state if database is empty
 	go func() {
 		loadLogger := logger.GetChild("populate-apps-db")
-
+ 
 		loadLogger.Debug("checking if Db must be populated from GitHub registry repository")
 		
 		// {{{1 Check if empty
@@ -159,6 +160,7 @@ func main() {
 		Cfg: cfg,
 		MDb: mDb,
 		MDbApps: mDbApps,
+		MDbSubmissions: mDbSubmissions,
 		Gh: gh,
 	}
 
