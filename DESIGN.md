@@ -18,6 +18,8 @@ Responses will always return JSON.
 ## App Model
 `apps` collection.
 
+[Documentation of schema fields](https://godoc.org/github.com/knative-scout/app-api/models#App)
+
 Schema:
 
 - `app_id` (String)
