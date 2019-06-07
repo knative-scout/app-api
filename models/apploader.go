@@ -61,6 +61,17 @@ type AppSrcFormatError struct {
 
 // Error implements the Error interface
 func (e AppSrcFormatError) Error() string {
+	out := e.PublicError()
+
+	if e.error != nil {
+		out += fmt.Sprintf(": %s", e.error.Error())
+	}
+
+	return out
+}
+
+// PublicError returns a public user facing error
+func (e AppSrcFormatError) PublicError() string {
 	out := ""
 
 	if len(e.name) > 0 {
@@ -68,10 +79,6 @@ func (e AppSrcFormatError) Error() string {
 	}
 
 	out += e.public
-
-	if e.error != nil {
-		out += fmt.Sprintf(": %s", e.error.Error())
-	}
 
 	return out
 }
@@ -125,32 +132,50 @@ func (l AppLoader) getGhFileContent(ref string, path string) (string, error) {
 	return txt, nil
 }
 
-// LoadAllAppsFromRegistry loads all serverless applications from the registry repository.
-// The ref argument can be used to load applications from commits other than HEAD. Pass an empty
-// string to read from HEAD.
-func (l AppLoader) LoadAllAppsFromRegistry(ref string) ([]*App, error) {
-	// {{{1 Get names of all folders at the top level
+// GetAppIDsFromRegistry gets a list of app IDs from the registry repository.
+// The ref argument can be used to load the app ID list from commits other than HEAD. Pass an
+// empty string to read from HEAD.
+func (l AppLoader) GetAppIDsFromRegistry(ref string) ([]string, error) {
 	_, contents, _, err := l.Gh.Repositories.GetContents(l.Ctx, l.Cfg.GhRegistryRepoOwner,
 		l.Cfg.GhRegistryRepoName, "/", &github.RepositoryContentGetOptions{
 			Ref: ref,
 		})
 	if err != nil {
-		return nil, fmt.Errorf("error listing top levle repository contents via "+
+		return nil, fmt.Errorf("error listing top level repository contents via "+
 			"GitHub API: %s", err.Error())
 	}
 
-	// {{{1 Loads each folder as an app
-	apps := []*App{}
+	ids := []string{}
 	
 	for _, content := range contents {
 		if *content.Type == "file" {
 			continue
 		}
 
-		app, err := l.LoadAppFromRegistry(ref, *content.Name)
+		ids = append(ids, *content.Name)
+	}
+
+	return ids, nil
+}
+
+// LoadAllAppsFromRegistry loads all serverless applications from the registry repository.
+// The ref argument can be used to load applications from commits other than HEAD. Pass an empty
+// string to read from HEAD.
+func (l AppLoader) LoadAllAppsFromRegistry(ref string) ([]*App, error) {
+	// {{{1 Get names of all apps in repository
+	appIDs, err := l.GetAppIDsFromRegistry(ref)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get IDs of all apps in repository: %s",
+			err.Error())
+
+	// {{{1 Loads each folder as an app
+	apps := []*App{}
+	
+	for _, appID := range appIDs {
+		app, err := l.LoadAppFromRegistry(ref, appID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load \"%s\" app: %s",
-				*content.Name, err.Error())
+				appID, err.Error())
 		}
 
 		apps = append(apps, app)
