@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"strings"
 	"fmt"
 	"net/http"
 	"crypto/hmac"
@@ -8,10 +9,12 @@ import (
 	"io/ioutil"
 	"encoding/hex"
 	"encoding/json"
+	"path/filepath"
 
 	"github.com/knative-scout/app-api/models"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"github.com/google/go-github/github"
 )
 
@@ -94,53 +97,181 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// {{{1 Check if PR is merged as a result
-	if err := json.Unmarshal(bodyBytes, &req); err != nil {
-		panic(fmt.Errorf("failed to parse request body as JSON: %s", err.Error()))
-	}
-	
-	h.Logger.Debugf("webhook request: %#v", req)
-
-	if !*req.PullRequest.Merged {
-		h.Logger.Debug("not merged yet")
-
-		h.RespondJSON(w, http.StatusOK, map[string]bool{
-			"ok": true,
+	// {{{1 Get apps edited in PR
+	// {{{2 Get files in PR
+	prFiles, _, err := h.Gh.PullRequests.ListFiles(h.Ctx, h.Cfg.GhRegistryRepoOwner,
+		h.Cfg.GhRegistryRepoName, *req.Number, &github.ListOptions{
+			Page: 1,
+			PerPage: 300, // 300 is the max number ever returned by this endpoint
 		})
-		return
+	if err != nil {
+		panic(fmt.Errorf("failed to list files in PR: %s", err.Error()))
 	}
 
-	// {{{1 Rebuild database
-	// {{{2 Load all apps
+	// {{{2 Parse file paths
+	// modifiedApps is a map set which holds the names of modified apps as keys
+	modifiedApps := map[string]bool{}
+	
+	for _, prFile := range prFiles {
+		// {{{3 Get old and new filepath of commit file
+		// This accounts for a file being moved from one app directory to another
+		dirs := []string{}
+		
+		curDir, _ := filepath.Split(*prFile.Filename)
+		dirs = append(dirs, curDir)
+
+		if prFile.PreviousFilename != nil {
+			oldDir, _ := filepath.Split(*prFile.PreviousFilename)
+			dirs = append(dirs, oldDir)
+		}
+
+		// {{{3 Parse for app directories
+		for _, dir := range dirs {
+			// If file in base dir
+			if len(dir) == 0 {
+				continue
+			}
+
+			parts := strings.Split(dir, "/")
+			
+			modifiedApps[parts[0]] = true
+		}
+	}
+
+	// {{{2 Determine if any modified apps in PR are those apps being deleted
+	// At this point modifiedApps would have a deleted app's ID in it b/c the
+	// commit would show this deleted app's files as being modified.
+	//
+	// We can tell by listing the folders present in the PR's head, and if any folders
+	// are not present in the PR's head but are in the modifiedApps set then these apps
+	// were deleted.
 	appLoader := models.AppLoader{
 		Ctx: h.Ctx,
 		Gh: h.Gh,
 		Cfg: h.Cfg,
 	}
 	
-	apps, err := appLoader.LoadAllAppsFromRegistry(*req.PullRequest.Head.Ref)
+	presentAppIDs, err := appLoader.GetAppIDsFromRegistry(*req.PullRequest.Head.Ref)
 	if err != nil {
-		panic(fmt.Errorf("failed to load apps: %s", err.Error()))
+		panic(fmt.Errorf("failed to get IDs of all apps present in PR head: %s",
+			err.Error()))
 	}
 
-	// {{{2 Delete old apps
-	_, err = h.MDbApps.DeleteMany(h.Ctx, bson.D{}, nil)
-	if err != nil {
-		panic(fmt.Errorf("failed to delete old apps from db: %s", err.Error()))
+	presentAppIDsSet := map[string]bool{}
+	for _, presentAppID := range presentAppIDs {
+		presentAppIDsSet[presentAppID] = true
 	}
 
-	// {{{2 Insert
-	insertDocs := []interface{}{}
+	for modifiedAppID, _ := range modifiedApps {
+		// If app in modifiedApps but not in PR head
+		if _, ok := presentAppIDsSet[modifiedAppID]; !ok {
+			delete(modifiedApps, modifiedAppID)
+		}
+	}
 
-	for _, app := range apps {
-		insertDocs = append(insertDocs, *app)
+	// {{{1 End early if PR does not include any modified apps
+	if len(modifiedApps) == 0 {
+		h.RespondJSON(w, http.StatusOK, map[string]bool{
+			"ok": true,
+		})
+		return
+	}
+
+	// {{{1 Parse / load modified apps
+	apps := map[string]models.App{}
+	
+	appLoadInternalErrs := map[string]error{}
+	appLoadFormatErrs := map[string]models.AppSrcFormatError{}
+	
+	for appID, _ := range modifiedApps {
+		app, err := appLoader.LoadAppFromRegistry(*req.PullRequest.Head.Ref, appID)
+		if err != nil {
+			// Check if a formatting error or an internal error
+			if fmtErr, ok := err.(models.AppSrcFormatError); ok {
+				appLoadFormatErrs[appID] = fmtErr
+			} else {
+				appLoadInternalErrs[appID] = err
+			}
+		} else {
+			apps[appID] = app
+		}
+	}
+
+	// {{{1 Save submission entry in db
+	// {{{2 Build submission entry
+	submission := models.Submission{
+		PRNumber: *req.Number,
+	}
+
+	// {{{3 Add correctly formatted apps
+	for appID, app := range apps {
+		submission.Apps[appID] = &models.SubmissionApp{
+			App: &app,
+			VerificationStatus: models.AppVerificationStatus{
+				FormatCorrect: true,
+			},
+		}
+	}
+
+	// {{{3 Add apps with format errors
+	for _, err := range appLoadFormatErrs {
+		submission.Apps[appID] = &models.SubmissionApp{
+			App: nil,
+			VerificationStatus: models.AppVerificationStatus{
+				FormatCorrect: false,
+			},
+		}
+	}
+
+	// {{{3 Add apps with internal errors
+	for appID, err := range appLoadFormatErrs {
+		submission.Apps[appID] = nil
+		h.Logger.Errorf("internal error occurred when parsing / loading app with "+
+			"ID \"%s\": %s", appID, err.Error())
+	}
+
+	// {{{2 Save in DB
+	_, err := h.MDbSubmissions.UpdateOne(h.Ctx, bson.D{{"pr_number", submission.PRNumber}},
+		submission, &mongo.UpdateOptions{
+			Upsert: true,
+		})
+	if err != nil {
+		panic(fmt.Errorf("failed to save submission in db: %s", err.Error()))
+	}
+
+	// {{{1 Comment on PR
+	// {{{2 Build PR comment body
+	// {{{3 Generate table with app statuses
+	commentBody := ""+
+		"| App ID | Status | Comment |\n"+
+		"| ------ | ------ | ------- |\n"
+
+	for appID, subApp := range submission.Apps {
+		status := ""
+		comment := ""
+
+		if subApp == nil {
+			status = "Internal error"
+			comment = "@@knative-scout/developers please triage"
+		} else if subApp.VerificationStatus.FormatCorrect {
+			status = "Good"
+		} else {
+			status = "Formating Error"
+			comment = appLoadFormatErrs[appID].PublicError()
+		}
+
+		commentBody += fmt.Sprintf("| %s | %s | %s |", appID, status, comment)
+	}
+
+	_, _, err := h.Gh.PullRequests.CreateComment(h.Ctx, h.Cfg.GhRegistryRepoOwner,
+		h.Cfg.GhRegistryRepoName, *req.Number, &github.PullRequestComment{
+			Body: &commentBody,
+		})
+	if err != nil {
+		panic(fmt.Errorf("failed to create comment on PR: %s", err.Error()))
 	}
 	
-	_, err = h.MDbApps.InsertMany(h.Ctx, insertDocs, nil)
-	if err != nil {
-		panic(fmt.Errorf("failed to insert apps into db: %s", err.Error()))
-	}
-
+	// {{{1 Done
 	h.RespondJSON(w, http.StatusOK, map[string]bool{
 		"ok": true,
 	})
