@@ -1,5 +1,22 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: app-api
+  namespace: knative-scout
+  labels:
+    app: app-api
+spec:
+  dockerImageRepository: docker.io/kscout/app-api
+  tags:
+    - from:
+        kind: DockerImage
+        name: docker.io/kscout/app-api
+      name: master
+      importPolicy:
+        scheduled: true
+---
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
 metadata:
   name: app-api
   namespace: knative-scout
@@ -8,8 +25,15 @@ metadata:
 spec:
   replicas: 1
   selector:
-    matchLabels:
-      app: app-api
+    app: app-api
+  triggers:
+    - type: ImageChange
+      imageChangeParams:
+        containerNames:
+          - app-api
+        from:
+          kind: ImageStreamTag
+          name: app-api:master
   template:
     metadata:
       labels:
@@ -17,7 +41,7 @@ spec:
     spec:
       containers:
         - name: app-api
-          image: docker.io/kscout/app-api:dev-9
+          image: docker.io/kscout/app-api:master
           env:
             - name: APP_HTTP_ADDR
               value: ":5000"
