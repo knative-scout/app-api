@@ -96,6 +96,8 @@ spec:
     weight: 100
   port:
     targetPort: http
+  tls:
+    termination: edge
 status:
   ingress:
     - host: api.kscout.io
