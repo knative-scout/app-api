@@ -12,6 +12,7 @@ import (
 	"github.com/knative-scout/app-api/models"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"github.com/google/go-github/github"
 )
 
 // WebhookHandler handles registry repository pull request webhook requests
@@ -19,92 +20,88 @@ type WebhookHandler struct {
 	BaseHandler
 }
 
-// webhookRequest is a request made by GitHub to the webhook endpoint
-type webhookRequest struct {
-	// Action is the pull request action which the request describes
-	Action string `json:"action"`
-
-	// Number is the pull request number
-	Number int `json:"number"`
-
-	// PullRequest itself
-	PullRequest pullRequest `json:"pull_request"`
-}
-
-// pullRequest holds the relevant fields of a GitHub API pull request object
-type pullRequest struct {
-	// Merged indicates if the pull request has been merged yet
-	Merged bool `json:"merged"`
-}
-
 // ServeHTTP implements net.Handler
 func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// {{{1 Verify request came from GitHub
-	var bodyBytes []byte = []byte{}
-	
-	if hashSig, ok := r.Header["X-Hub-Signature"]; !ok {
+	// {{{2 Get header value
+	hubSigHeader, ok := r.Header["X-Hub-Signature"]
+	if !ok || len(hubSigHeader) != 1 {
 		h.RespondJSON(w, http.StatusBadRequest, map[string]string{
-			"error": "X-Hub-Signature header not present",
+			"error": "X-Hub-Signature header must have a value",
 		})
 		return
-	} else if len(hashSig) != 1 {
-		h.RespondJSON(w, http.StatusBadRequest, map[string]string{
-			"error": "X-Hub-Signature header must have 1 value",
+	}
+
+	expectedSig := hubSigHeader[0]
+
+	// {{{2 Create HMAC of request
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		panic(fmt.Errorf("failed to read request body: %s", err.Error()))
+	}
+
+	bodyHMAC := hmac.New(sha1.New, []byte(h.Cfg.GhWebhookSecret))
+	bodyHMAC.Write(bodyBytes)
+
+	actualSig := fmt.Sprintf("sha1=%s", hex.EncodeToString(bodyHMAC.Sum(nil)))
+
+	// {{{2 Compare
+	if !hmac.Equal([]byte(expectedSig), []byte(actualSig)) {
+		h.RespondJSON(w, http.StatusUnauthorized, map[string]string{
+			"error": "could not verify request",
 		})
 		return
-	} else {
-		b, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			panic(fmt.Errorf("failed to ready body bytes when verifying request: %s",
-				err.Error()))
-		}
-		bodyBytes = b
+	}
 		
-		bodyHMAC := hmac.New(sha1.New, []byte(h.Cfg.GhWebhookSecret))
-		bodyHMAC.Write(bodyBytes)
-
-		matchHashSig := fmt.Sprintf("sha1=%s", hex.EncodeToString(bodyHMAC.Sum(nil)))
-
-		if !hmac.Equal([]byte(hashSig[0]), []byte(matchHashSig)) {
-			h.RespondJSON(w, http.StatusBadRequest, map[string]string{
-				"error": "failed to verify request signature",
-			})
-			return
-		}
+	// {{{1 Check if we can handle this type of event
+	eventTypeHeader, ok := r.Header["X-Github-Event"]
+	if !ok || len(eventTypeHeader) != 1 {
+		h.RespondJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "X-Github-Event header must have a value",
+		})
+		return
 	}
 	
-	// {{{1 Check if we can handle the event
-	if eventType, ok := r.Header["X-Github-Event"]; !ok {
-		h.RespondJSON(w, http.StatusBadRequest, map[string]string{
-			"error": "X-Github-Event header not present",
-		})
-		return
-	} else if len(eventType) != 1 {
-		h.RespondJSON(w, http.StatusBadRequest, map[string]string{
-			"error": "X-Github-Event header must have 1 value",
-		})
-		return;
-	} else if eventType[0] == "ping" {
+	eventType := eventTypeHeader[0]
+
+	switch eventType {
+	case "ping":
 		h.RespondJSON(w, http.StatusOK, map[string]bool{
-			"ok": true,
+			"pong": true,
 		})
 		return
-	} else if eventType[0] != "pull_request" {
-		h.RespondJSON(w, http.StatusBadRequest, map[string]string{
-			"error": "can only handle \"pull_request\" events",
+	case "pull_request":
+		break
+	default:
+		h.RespondJSON(w, http.StatusNotAcceptable, map[string]string{
+			"error": fmt.Sprintf("cannot handle event type: %s", eventType),
+		})
+	}
+
+	// {{{1 Parse body
+	var req github.PullRequestEvent
+
+	if err := json.Unmarshal(bodyBytes, &req); err != nil {
+		panic(fmt.Errorf("failed to parse request body as JSON: %s", err.Error()))
+	}
+
+	// {{{1 Check if we can handler events from this repository
+	if *req.Repo.Owner.Login != h.Cfg.GhRegistryRepoOwner ||
+		*req.Repo.Name != h.Cfg.GhRegistryRepoName {
+		h.RespondJSON(w, http.StatusNotAcceptable, map[string]string{
+			"error": "endpoint does not handle requests from this repository",
 		})
 		return
 	}
 
 	// {{{1 Check if PR is merged as a result
-	var req webhookRequest
 	if err := json.Unmarshal(bodyBytes, &req); err != nil {
 		panic(fmt.Errorf("failed to parse request body as JSON: %s", err.Error()))
 	}
 	
 	h.Logger.Debugf("webhook request: %#v", req)
 
-	if !req.PullRequest.Merged {
+	if !*req.PullRequest.Merged {
 		h.Logger.Debug("not merged yet")
 
 		h.RespondJSON(w, http.StatusOK, map[string]bool{
