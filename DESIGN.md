@@ -34,6 +34,17 @@ Schema:
 - `author` (String)
 - `maintainer` (String)
 
+## Resource Model
+`resource` collection.
+
+Schema:
+
+- `resource_id` (String)
+- `name` (String)
+- `description` (String)
+- `author` (String)
+
+
 # Endpoints
 Most endpoints to not require authentication.  
 
@@ -113,6 +124,22 @@ Request:
 Response:
 
 - `categories` (List[String])
+
+### Search Resources
+`GET /resources?query=<query>&categories=<categories>`
+
+Search for learning resources.
+
+If no search parameters are provided all resources will be returned.
+
+Request:
+
+- `query` (Optional, String): Natural language query
+- `categories` (Optional, List[String]): Categories of learning resources
+
+Response:
+
+- `resource` (List[[Resource Model](#resource-model)])
 
 ## User Endpoints
 `GET /users/login`
