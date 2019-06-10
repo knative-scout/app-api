@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"strings"
 	"fmt"
 	"net/http"
 	"crypto/hmac"
@@ -10,12 +9,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"path/filepath"
+	"strings"
 
 	"github.com/knative-scout/app-api/models"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"github.com/google/go-github/github"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"github.com/google/go-github/v25/github"
 )
 
 // WebhookHandler handles registry repository pull request webhook requests
@@ -87,6 +87,7 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(bodyBytes, &req); err != nil {
 		panic(fmt.Errorf("failed to parse request body as JSON: %s", err.Error()))
 	}
+
 
 	// {{{1 Check if we can handler events from this repository
 	if *req.Repo.Owner.Login != h.Cfg.GhRegistryRepoOwner ||
@@ -193,7 +194,7 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				appLoadInternalErrs[appID] = err
 			}
 		} else {
-			apps[appID] = app
+			apps[appID] = *app
 		}
 	}
 
@@ -201,6 +202,7 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// {{{2 Build submission entry
 	submission := models.Submission{
 		PRNumber: *req.Number,
+		Apps: map[string]*models.SubmissionApp{},
 	}
 
 	// {{{3 Add correctly formatted apps
@@ -214,7 +216,7 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// {{{3 Add apps with format errors
-	for _, err := range appLoadFormatErrs {
+	for appID, _ := range appLoadFormatErrs {
 		submission.Apps[appID] = &models.SubmissionApp{
 			App: nil,
 			VerificationStatus: models.AppVerificationStatus{
@@ -224,16 +226,18 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// {{{3 Add apps with internal errors
-	for appID, err := range appLoadFormatErrs {
+	for appID, err := range appLoadInternalErrs {
 		submission.Apps[appID] = nil
 		h.Logger.Errorf("internal error occurred when parsing / loading app with "+
 			"ID \"%s\": %s", appID, err.Error())
 	}
 
 	// {{{2 Save in DB
-	_, err := h.MDbSubmissions.UpdateOne(h.Ctx, bson.D{{"pr_number", submission.PRNumber}},
-		submission, &mongo.UpdateOptions{
-			Upsert: true,
+	trueValue := true
+	_, err = h.MDbSubmissions.UpdateOne(h.Ctx, bson.D{{"pr_number", submission.PRNumber}},
+		bson.D{{"$set", submission}},
+		&options.UpdateOptions{
+			Upsert: &trueValue,
 		})
 	if err != nil {
 		panic(fmt.Errorf("failed to save submission in db: %s", err.Error()))
@@ -242,9 +246,11 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// {{{1 Comment on PR
 	// {{{2 Build PR comment body
 	// {{{3 Generate table with app statuses
-	commentBody := ""+
-		"| App ID | Status | Comment |\n"+
-		"| ------ | ------ | ------- |\n"
+	commentBody := "I've taken a look at your pull request, here is the "+
+		"current status of the applications you modified:  \n"+
+		"\n  "+
+		"| App ID | Status | Comment |  \n"+
+		"| ------ | ------ | ------- |  \n"
 
 	for appID, subApp := range submission.Apps {
 		status := ""
@@ -252,21 +258,47 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		if subApp == nil {
 			status = "Internal error"
-			comment = "@@knative-scout/developers please triage"
+			comment = "@knative-scout/developers please triage"
 		} else if subApp.VerificationStatus.FormatCorrect {
 			status = "Good"
 		} else {
 			status = "Formating Error"
-			comment = appLoadFormatErrs[appID].PublicError()
+			comment = "See error below"
 		}
 
 		commentBody += fmt.Sprintf("| %s | %s | %s |", appID, status, comment)
 	}
 
-	_, _, err := h.Gh.PullRequests.CreateComment(h.Ctx, h.Cfg.GhRegistryRepoOwner,
-		h.Cfg.GhRegistryRepoName, *req.Number, &github.PullRequestComment{
+	// {{{3 Place any detailed error messages
+	if len(appLoadFormatErrs) > 0 || len(appLoadInternalErrs) > 0 {
+		commentBody += "  \n"+
+			"# Errors  \n"+
+			"I found some errors with the changes made in this pull request:  \n"
+	}
+
+	for appID, err := range appLoadFormatErrs {
+		commentBody += fmt.Sprintf("## App ID: %s  \n", appID)
+		commentBody += "The application's formatting was incorrect:  \n"
+		commentBody += fmt.Sprintf("```\n%s\n```\n", err.PublicError())
+	}
+
+	for appID, _ := range appLoadInternalErrs {
+		commentBody += fmt.Sprintf("## App ID: %s  \n", appID)
+		commentBody += "An internal error occurred on our servers when we were "+
+			"processing this serverless application.  \n"+
+			"  \n"+
+			"Do not worry the team has been notified will fix the issue "+
+			"as soon as possible"
+	}
+
+	commentBody += "  \n---  \n"+
+		"*I am a bot*"
+
+	_, _, err = h.Gh.Issues.CreateComment(h.Ctx, h.Cfg.GhRegistryRepoOwner,
+		h.Cfg.GhRegistryRepoName, *req.Number, &github.IssueComment{
 			Body: &commentBody,
 		})
+
 	if err != nil {
 		panic(fmt.Errorf("failed to create comment on PR: %s", err.Error()))
 	}

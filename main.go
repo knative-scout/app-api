@@ -2,21 +2,21 @@ package main
 
 import (
 	"context"
-	"os"
-	"os/signal"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
 
 	"github.com/knative-scout/app-api/config"
 	"github.com/knative-scout/app-api/handlers"
 	"github.com/knative-scout/app-api/models"
-	
+
 	"github.com/Noah-Huppert/golog"
+	"github.com/google/go-github/v25/github"
 	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/bson"
-	"github.com/google/go-github/v25/github"
 	"golang.org/x/oauth2"
 )
 
@@ -70,7 +70,7 @@ func main() {
 
 	// {{{2 Connect
 	logger.Debug("connecting to Db")
-	
+
 	mDbClient, err := mongo.Connect(ctx, mDbConnOpts)
 	if err != nil {
 		logger.Fatalf("failed to connect to database: %s", err.Error())
@@ -89,12 +89,12 @@ func main() {
 	// {{{1 GitHub
 	// {{{2 Create client
 	logger.Debug("authenticating with GitHub API")
-	
+
 	ghTokenSrc := oauth2.StaticTokenSource(&oauth2.Token{
 		AccessToken: cfg.GhToken,
 	})
 	ghTokenClient := oauth2.NewClient(ctx, ghTokenSrc)
-	
+
 	gh := github.NewClient(ghTokenClient)
 
 	// {{{2 Ensure registry repository exists
@@ -110,9 +110,9 @@ func main() {
 	// {{{1 Load serverless application registry repository state if database is empty
 	go func() {
 		loadLogger := logger.GetChild("populate-apps-db")
- 
+
 		loadLogger.Debug("checking if Db must be populated from GitHub registry repository")
-		
+
 		// {{{1 Check if empty
 		docCount, err := mDbApps.CountDocuments(ctx, bson.D{{}}, nil)
 		if err != nil {
@@ -129,10 +129,10 @@ func main() {
 		// {{{1 Load all apps if empty
 		appLoader := models.AppLoader{
 			Ctx: ctx,
-			Gh: gh,
+			Gh:  gh,
 			Cfg: cfg,
 		}
-		
+
 		apps, err := appLoader.LoadAllAppsFromRegistry("")
 		if err != nil {
 			loadLogger.Fatalf("failed to load apps: %s", err.Error())
@@ -144,7 +144,7 @@ func main() {
 		for _, app := range apps {
 			insertDocs = append(insertDocs, *app)
 		}
-		
+
 		_, err = mDbApps.InsertMany(ctx, insertDocs, nil)
 		if err != nil {
 			loadLogger.Fatalf("failed to insert apps into db: %s", err.Error())
@@ -155,13 +155,13 @@ func main() {
 
 	// {{{1 Router
 	baseHandler := handlers.BaseHandler{
-		Ctx: ctx,
-		Logger: logger.GetChild("handlers"),
-		Cfg: cfg,
-		MDb: mDb,
-		MDbApps: mDbApps,
+		Ctx:            ctx,
+		Logger:         logger.GetChild("handlers"),
+		Cfg:            cfg,
+		MDb:            mDb,
+		MDbApps:        mDbApps,
 		MDbSubmissions: mDbSubmissions,
-		Gh: gh,
+		Gh:             gh,
 	}
 
 	router := mux.NewRouter()
@@ -170,7 +170,7 @@ func main() {
 		baseHandler.GetChild("health"),
 	}).Methods("GET")
 
-	router.Handle("/apps/id/{id}", handlers.AppByIDHandler {
+	router.Handle("/apps/id/{id}", handlers.AppByIDHandler{
 		baseHandler.GetChild("get-app-by-id"),
 	}).Methods("GET")
 
@@ -197,7 +197,7 @@ func main() {
 
 	// {{{1 Start HTTP server
 	logger.Debug("starting HTTP server")
-	
+
 	server := http.Server{
 		Addr: cfg.HTTPAddr,
 		Handler: handlers.PanicHandler{
@@ -206,7 +206,7 @@ func main() {
 				BaseHandler: baseHandler,
 				Handler: handlers.CORSHandler{
 					BaseHandler: baseHandler,
-					Handler: router,
+					Handler:     router,
 				},
 			},
 		},

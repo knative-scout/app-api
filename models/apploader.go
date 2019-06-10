@@ -137,7 +137,7 @@ func (l AppLoader) getGhFileContent(ref string, path string) (string, error) {
 // empty string to read from HEAD.
 func (l AppLoader) GetAppIDsFromRegistry(ref string) ([]string, error) {
 	_, contents, _, err := l.Gh.Repositories.GetContents(l.Ctx, l.Cfg.GhRegistryRepoOwner,
-		l.Cfg.GhRegistryRepoName, "/", &github.RepositoryContentGetOptions{
+		l.Cfg.GhRegistryRepoName, "", &github.RepositoryContentGetOptions{
 			Ref: ref,
 		})
 	if err != nil {
@@ -167,6 +167,7 @@ func (l AppLoader) LoadAllAppsFromRegistry(ref string) ([]*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get IDs of all apps in repository: %s",
 			err.Error())
+	}
 
 	// {{{1 Loads each folder as an app
 	apps := []*App{}
