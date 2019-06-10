@@ -42,9 +42,10 @@ func getSearchDataFromDB(query string, tags string, categories string, h AppSear
 	// else, construct a bson query will all the required parameters and find in database
 	searchBson := bson.D{}
 	if len(query)>0{
+		query := strings.ReplaceAll(query,",","|")
 		searchBson = append(searchBson, bson.E{
 			"description",
-				bson.D{{"$regex", ".*"+query+".*i"}},
+				bson.D{{"$regex", "\\s*("+query+")"}, {"$options","i"}},
 		})
 	}
 	if len(tags)>0{
