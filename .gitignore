@@ -6,4 +6,4 @@ container-data
 
 # Secrets
 .env
-deploy/secrets.yaml
+secrets*
