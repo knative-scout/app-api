@@ -1,29 +1,30 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: db-config
-  namespace: knative-scout
+  name: {{ .config.env }}-db-config
 data:
-  mongoUser: knative-scout-app-api-dev
-  mongoDbName: knative-scout-app-api-dev
+  mongoUser: {{ .config.env }}-knative-scout-app-api
+  mongoDbName: {{ .config.env }}-knative-scout-app-api
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: mongo
-  namespace: knative-scout
+  name: {{ .config.env }}-mongo
   labels:
     app: mongo
+    env: {{ .config.env }}
 spec:
   selector:
     matchLabels:
       app: mongo
-  serviceName: mongo
+      env: {{ .config.env }}
+  serviceName: {{ .config.env }}-mongo
   replicas: 1
   template:
     metadata:
       labels:
         app: mongo
+        env: {{ .config.env }}
     spec:
       containers:
         - name: mongo
@@ -32,17 +33,17 @@ spec:
             - name: MONGO_INITDB_ROOT_USERNAME
               valueFrom:
                 configMapKeyRef:
-                  name: db-config
+                  name: {{ .config.env }}-db-config
                   key: mongoUser
             - name: MONGO_INITDB_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: mongo-credentials
+                  name: {{ .config.env }}-mongo-credentials
                   key: password
             - name: MONGO_INITDB_DATABASE
               valueFrom:
                 configMapKeyRef:
-                  name: db-config
+                  name: {{ .config.env }}-db-config
                   key: mongoDbName
           ports:
             - name: mongo
@@ -53,6 +54,9 @@ spec:
   volumeClaimTemplates:
   - metadata:
       name: mongo
+      labels:
+        app: mongo
+        env: {{ .config.env }}
     spec:
       accessModes:
         - ReadWriteOnce
@@ -63,13 +67,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: mongo
-  namespace: knative-scout
+  name: {{ .config.env }}-mongo
   labels:
     app: mongo
+    env: {{ .config.env }}
 spec:
   selector:
     app: mongo
+    env: {{ .config.env }}
   ports:
     - port: 27017
       name: mongo
