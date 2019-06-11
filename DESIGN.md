@@ -18,6 +18,8 @@ Responses will always return JSON.
 ## App Model
 `apps` collection.
 
+[Documentation of schema fields](https://godoc.org/github.com/knative-scout/app-api/models#App)
+
 Schema:
 
 - `app_id` (String)
@@ -34,6 +36,19 @@ Schema:
 - `author` (String)
 - `maintainer` (String)
 
+## Submission Model
+`submissions` collection.
+
+[Documentation of schema fields](https://godoc.org/github.com/knative-scout/app-api/models#Submission)
+
+Schema:
+
+- `pr_number` (Integer)
+- `apps` (List[Object]):
+  - `app` ([App Model](#app-model))
+  - `verification_status` (Object):
+	- `format_correct` (Boolean)
+
 ## Resource Model
 `resource` collection.
 
@@ -43,7 +58,6 @@ Schema:
 - `name` (String)
 - `description` (String)
 - `author` (String)
-
 
 # Endpoints
 Most endpoints to not require authentication.  

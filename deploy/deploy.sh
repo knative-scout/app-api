@@ -63,23 +63,19 @@ while getopts "s:e:h:" opt; do
     case "$opt" in
 	e)
 	    env="$OPTARG"
-	    shift
-	    shift
 	    ;;
 	h)
 	    host="$OPTARG"
 	    custom_host=true
-	    shift
-	    shift
 	    ;;
 	s)
 	    secrets_file="$(realpath $OPTARG)"
-	    shift
-	    shift
 	    ;;
 	'?') die "Unknown option" ;;
     esac
 done
+
+shift $(expr $OPTIND - 1)
 
 # {{{2 Computed defaults
 if [ -z "$custom_host" ] && [[ "$env" != "prod" ]]; then

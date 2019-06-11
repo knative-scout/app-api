@@ -32,6 +32,9 @@ type BaseHandler struct {
 	// MDbApps is the MongoDB apps collection instance
 	MDbApps *mongo.Collection
 
+	// MDbSubmissions is the MongoDB submissions collection instance
+	MDbSubmissions *mongo.Collection
+
 	// Gh is the GitHub API client
 	Gh *github.Client
 }

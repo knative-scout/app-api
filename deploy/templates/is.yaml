@@ -9,13 +9,13 @@ spec:
   tags:
     - from:
         kind: DockerImage
-        name: docker.io/kscout/app-api
+        name: docker.io/kscout/app-api:prod-latest
       name: prod-latest
       importPolicy:
         scheduled: true
     - from:
         kind: DockerImage
-        name: docker.io/kscout/app-api
+        name: docker.io/kscout/app-api:staging-latest
       name: staging-latest
       importPolicy:
         scheduled: true
