@@ -8,19 +8,18 @@ import (
 	"io/ioutil"
 	"encoding/hex"
 	"encoding/json"
-	"path/filepath"
-	"strings"
 
-	"github.com/kscout/serverless-registry-api/models"
+	"github.com/kscout/serverless-registry-api/jobs"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"github.com/google/go-github/v25/github"
 )
 
 // WebhookHandler handles registry repository pull request webhook requests
 type WebhookHandler struct {
 	BaseHandler
+
+	// PullRequestEvaluator evaluates new pull requests and provides feedback to the user
+	PullRequestEvaluator jobs.PullRequestEvaluator
 }
 
 // ServeHTTP implements net.Handler
@@ -55,8 +54,9 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-		
-	// {{{1 Check if we can handle this type of event
+
+	// {{{1 Determine if webhook should do anything
+	// {{{2 Check if we can handle this type of event
 	eventTypeHeader, ok := r.Header["X-Github-Event"]
 	if !ok || len(eventTypeHeader) != 1 {
 		h.RespondJSON(w, http.StatusBadRequest, map[string]string{
@@ -75,235 +75,117 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	case "pull_request":
 		break
+	case "push":
+		break
 	default:
 		h.RespondJSON(w, http.StatusNotAcceptable, map[string]string{
 			"error": fmt.Sprintf("cannot handle event type: %s", eventType),
 		})
 	}
 
-	// {{{1 Parse body
-	var req github.PullRequestEvent
+	// {{{2 Parse request body to determine what triggered event
+	var prEvalSubmissions []jobs.PREvalSubmission
+	var repoOwner string
+	var repoName string
+	var validEvent bool
 
-	if err := json.Unmarshal(bodyBytes, &req); err != nil {
-		panic(fmt.Errorf("failed to parse request body as JSON: %s", err.Error()))
-	}
+	switch eventType {
+	case "pull_request":
+		// {{{3 Parse
+		var req github.PullRequestEvent
 
-
-	// {{{1 Check if we can handler events from this repository
-	if *req.Repo.Owner.Login != h.Cfg.GhRegistryRepoOwner ||
-		*req.Repo.Name != h.Cfg.GhRegistryRepoName {
-		h.RespondJSON(w, http.StatusNotAcceptable, map[string]string{
-			"error": "endpoint does not handle requests from this repository",
-		})
-		return
-	}
-
-	// {{{1 Get apps edited in PR
-	// {{{2 Get files in PR
-	prFiles, _, err := h.Gh.PullRequests.ListFiles(h.Ctx, h.Cfg.GhRegistryRepoOwner,
-		h.Cfg.GhRegistryRepoName, *req.Number, &github.ListOptions{
-			Page: 1,
-			PerPage: 300, // 300 is the max number ever returned by this endpoint
-		})
-	if err != nil {
-		panic(fmt.Errorf("failed to list files in PR: %s", err.Error()))
-	}
-
-	// {{{2 Parse file paths
-	// modifiedApps is a map set which holds the names of modified apps as keys
-	modifiedApps := map[string]bool{}
-	
-	for _, prFile := range prFiles {
-		// {{{3 Get old and new filepath of commit file
-		// This accounts for a file being moved from one app directory to another
-		dirs := []string{}
-		
-		curDir, _ := filepath.Split(*prFile.Filename)
-		dirs = append(dirs, curDir)
-
-		if prFile.PreviousFilename != nil {
-			oldDir, _ := filepath.Split(*prFile.PreviousFilename)
-			dirs = append(dirs, oldDir)
+		if err := json.Unmarshal(bodyBytes, &req); err != nil {
+			panic(fmt.Errorf("failed to parse pull request event body as JSON: %s",
+				err.Error()))
 		}
 
-		// {{{3 Parse for app directories
-		for _, dir := range dirs {
-			// If file in base dir
-			if len(dir) == 0 {
-				continue
+		repoOwner = *req.PullRequest.Base.Repo.Owner.Login
+		repoName = *req.PullRequest.Base.Repo.Name
+
+		// {{{3 Exit early if the PR event action does not indicate code changes
+		// isMergeEvent indicates if the merge button was just clicked on a PR
+		// button on the PR.
+		isMergeEvent := *req.Action == "closed" && *req.PullRequest.Merged
+		validEvent = *req.Action == "opened" || isMergeEvent
+
+		// {{{3 Make PREvalSubmission
+		prEvalSubmissions = append(prEvalSubmissions, jobs.PREvalSubmission{
+			PR: *req.PullRequest,
+			OnlyUpdateDB: isMergeEvent,
+		})
+	case "push":
+		// {{{3 Parse
+		var req github.PushEvent
+
+		if err := json.Unmarshal(bodyBytes, &req); err != nil {
+			panic(fmt.Errorf("failed to parse push event body as JSON: %s",
+				err.Error()))
+		}
+
+		repoOwner = *req.Repo.Owner.Login
+		repoName = *req.Repo.Name
+
+		// {{{3 Find PRs which include commits that were pushed
+		// relevantPRs is a set which holds the pull requests which have code changes
+		// keys are pull request numbers, values are pull requests
+		relevantPRs := map[int]github.PullRequest{}
+
+		for _, commit := range req.Commits {
+			// {{{4 Get PRs to which commit belongs
+			commitPRs, _, err := h.Gh.PullRequests.ListPullRequestsWithCommit(h.Ctx,
+				h.Cfg.GhRegistryRepoOwner, h.Cfg.GhRegistryRepoName,
+				*commit.ID, nil)
+			if err != nil {
+				panic(fmt.Errorf("failed to list PRs which include commit "+
+					"with sha \"%s\": %s", *commit.ID, err.Error()))
 			}
 
-			parts := strings.Split(dir, "/")
-			
-			modifiedApps[parts[0]] = true
+			// {{{4 Catalog relevant commits
+			for _, pr := range commitPRs {
+				// Ignore PRs where this commit is the merge commit
+				if pr.MergeCommitSHA != nil &&
+					*pr.MergeCommitSHA == *commit.ID {
+					continue
+				}
+				
+				relevantPRs[*pr.Number] = *pr
+			}
 		}
-	}
 
-	// {{{2 Determine if any modified apps in PR are those apps being deleted
-	// At this point modifiedApps would have a deleted app's ID in it b/c the
-	// commit would show this deleted app's files as being modified.
-	//
-	// We can tell by listing the folders present in the PR's head, and if any folders
-	// are not present in the PR's head but are in the modifiedApps set then these apps
-	// were deleted.
-	appLoader := models.AppLoader{
-		Ctx: h.Ctx,
-		Gh: h.Gh,
-		Cfg: h.Cfg,
-	}
-	
-	presentAppIDs, err := appLoader.GetAppIDsFromRegistry(*req.PullRequest.Head.Ref)
-	if err != nil {
-		panic(fmt.Errorf("failed to get IDs of all apps present in PR head: %s",
-			err.Error()))
-	}
-
-	presentAppIDsSet := map[string]bool{}
-	for _, presentAppID := range presentAppIDs {
-		presentAppIDsSet[presentAppID] = true
-	}
-
-	for modifiedAppID, _ := range modifiedApps {
-		// If app in modifiedApps but not in PR head
-		if _, ok := presentAppIDsSet[modifiedAppID]; !ok {
-			delete(modifiedApps, modifiedAppID)
+		// {{{3 Create PREvalSubmissions
+		for _, pr := range relevantPRs {
+			prEvalSubmissions = append(prEvalSubmissions, jobs.PREvalSubmission{
+				PR: pr,
+				OnlyUpdateDB: false,
+			})
 		}
+
+		// {{{3 Exit early if none of the pushed commits reference a pull request
+		validEvent = len(relevantPRs) > 0
 	}
 
-	// {{{1 End early if PR does not include any modified apps
-	if len(modifiedApps) == 0 {
+	// {{{2 Exit early if the event we received is not one we want to handle
+	if !validEvent {
 		h.RespondJSON(w, http.StatusOK, map[string]bool{
 			"ok": true,
 		})
 		return
 	}
 
-	// {{{1 Parse / load modified apps
-	apps := map[string]models.App{}
-	
-	appLoadInternalErrs := map[string]error{}
-	appLoadFormatErrs := map[string]models.AppSrcFormatError{}
-	
-	for appID, _ := range modifiedApps {
-		app, err := appLoader.LoadAppFromRegistry(*req.PullRequest.Head.Ref, appID)
-		if err != nil {
-			// Check if a formatting error or an internal error
-			if fmtErr, ok := err.(models.AppSrcFormatError); ok {
-				appLoadFormatErrs[appID] = fmtErr
-			} else {
-				appLoadInternalErrs[appID] = err
-			}
-		} else {
-			apps[appID] = *app
-		}
-	}
-
-	// {{{1 Save submission entry in db
-	// {{{2 Build submission entry
-	submission := models.Submission{
-		PRNumber: *req.Number,
-		Apps: map[string]*models.SubmissionApp{},
-	}
-
-	// {{{3 Add correctly formatted apps
-	for appID, app := range apps {
-		submission.Apps[appID] = &models.SubmissionApp{
-			App: &app,
-			VerificationStatus: models.AppVerificationStatus{
-				FormatCorrect: true,
-			},
-		}
-	}
-
-	// {{{3 Add apps with format errors
-	for appID, _ := range appLoadFormatErrs {
-		submission.Apps[appID] = &models.SubmissionApp{
-			App: nil,
-			VerificationStatus: models.AppVerificationStatus{
-				FormatCorrect: false,
-			},
-		}
-	}
-
-	// {{{3 Add apps with internal errors
-	for appID, err := range appLoadInternalErrs {
-		submission.Apps[appID] = nil
-		h.Logger.Errorf("internal error occurred when parsing / loading app with "+
-			"ID \"%s\": %s", appID, err.Error())
-	}
-
-	// {{{2 Save in DB
-	trueValue := true
-	_, err = h.MDbSubmissions.UpdateOne(h.Ctx, bson.D{{"pr_number", submission.PRNumber}},
-		bson.D{{"$set", submission}},
-		&options.UpdateOptions{
-			Upsert: &trueValue,
+	// {{{2 Check if we can handler events from this repository
+	if repoOwner != h.Cfg.GhRegistryRepoOwner || repoName != h.Cfg.GhRegistryRepoName {
+		h.RespondJSON(w, http.StatusNotAcceptable, map[string]string{
+			"error": "endpoint does not handle requests from this repository",
 		})
-	if err != nil {
-		panic(fmt.Errorf("failed to save submission in db: %s", err.Error()))
+		return
 	}
 
-	// {{{1 Comment on PR
-	// {{{2 Build PR comment body
-	// {{{3 Generate table with app statuses
-	commentBody := "I've taken a look at your pull request, here is the "+
-		"current status of the applications you modified:  \n"+
-		"\n  "+
-		"| App ID | Status | Comment |  \n"+
-		"| ------ | ------ | ------- |  \n"
-
-	for appID, subApp := range submission.Apps {
-		status := ""
-		comment := ""
-
-		if subApp == nil {
-			status = "Internal error"
-			comment = fmt.Sprintf("%s please triage", h.Cfg.GhDevTeamName)
-		} else if subApp.VerificationStatus.FormatCorrect {
-			status = "Good"
-		} else {
-			status = "Formating Error"
-			comment = "See error below"
-		}
-
-		commentBody += fmt.Sprintf("| %s | %s | %s |", appID, status, comment)
+	// {{{1 Submit PR evaluation requests
+	for _, evalSubmission := range prEvalSubmissions {
+		h.PullRequestEvaluator.Submit(evalSubmission)
 	}
 
-	// {{{3 Place any detailed error messages
-	if len(appLoadFormatErrs) > 0 || len(appLoadInternalErrs) > 0 {
-		commentBody += "  \n"+
-			"# Errors  \n"+
-			"I found some errors with the changes made in this pull request:  \n"
-	}
-
-	for appID, err := range appLoadFormatErrs {
-		commentBody += fmt.Sprintf("## App ID: %s  \n", appID)
-		commentBody += "The application's formatting was incorrect:  \n"
-		commentBody += fmt.Sprintf("```\n%s\n```\n", err.PublicError())
-	}
-
-	for appID, _ := range appLoadInternalErrs {
-		commentBody += fmt.Sprintf("## App ID: %s  \n", appID)
-		commentBody += "An internal error occurred on our servers when we were "+
-			"processing this serverless application.  \n"+
-			"  \n"+
-			"Do not worry the team has been notified will fix the issue "+
-			"as soon as possible"
-	}
-
-	commentBody += "  \n---  \n"+
-		"*I am a bot*"
-
-	_, _, err = h.Gh.Issues.CreateComment(h.Ctx, h.Cfg.GhRegistryRepoOwner,
-		h.Cfg.GhRegistryRepoName, *req.Number, &github.IssueComment{
-			Body: &commentBody,
-		})
-
-	if err != nil {
-		panic(fmt.Errorf("failed to create comment on PR: %s", err.Error()))
-	}
-	
-	// {{{1 Done
+	// {{{1 Return success response to GitHub
 	h.RespondJSON(w, http.StatusOK, map[string]bool{
 		"ok": true,
 	})

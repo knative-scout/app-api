@@ -67,8 +67,8 @@ A webhook should exist for the
 
 Use a randomly generated string for the "Secret".  
 
-Select "Let me select individual events" and then "Pull requests" for the events
-which should trigger the webhook.
+Select "Let me select individual events" for "Which events would you like to 
+trigger this webhook?". Then from the list select "Pull requests" and "Pushes".
 
 ### API Token
 Generate an API token which has the following scopes:

@@ -10,6 +10,7 @@ import (
 	"github.com/kscout/serverless-registry-api/config"
 	"github.com/kscout/serverless-registry-api/handlers"
 	"github.com/kscout/serverless-registry-api/models"
+	"github.com/kscout/serverless-registry-api/jobs"
 
 	"github.com/Noah-Huppert/golog"
 	"github.com/google/go-github/v25/github"
@@ -107,6 +108,26 @@ func main() {
 
 	logger.Debug("authenticated with GitHub API")
 
+	// {{{1 Setup component shutdown bus
+	// targetShutdownBusCount is the number of messages which must be received on
+	// shutdownBus before the process will exit gracefully
+	targetShutdownBusCount := 3
+	
+	// shutdownBus receives a message with a component's name when a component shuts down.
+	// This lets the process wait until all of its components have been shut down gracefully
+	// before exiting.
+	//
+	// Currently the process has the following components:
+	//
+	//    - (populate-apps-db) Initial apps collection populator
+	//    - (pull-request-evaluator) Pull request evaluator
+	//    - (http-api) HTTP API server
+	// 
+	// The end of the program will wait for targetShutdownBusCount number of messages to
+	// be sent over this bus before exiting. Each of the components above should send a
+	// message on the bus when they are done.
+	shutdownBus := make(chan string, targetShutdownBusCount)
+
 	// {{{1 Load serverless application registry repository state if database is empty
 	go func() {
 		loadLogger := logger.GetChild("populate-apps-db")
@@ -123,6 +144,7 @@ func main() {
 		if docCount > 0 {
 			loadLogger.Debugf("no load required, found %d app(s) in database",
 				docCount)
+			shutdownBus <- "populate-apps-db"
 			return
 		}
 
@@ -151,6 +173,25 @@ func main() {
 		}
 
 		loadLogger.Debugf("loaded %d app(s) into database", len(apps))
+
+		shutdownBus <- "populate-apps-db"
+	}()
+
+	// {{{1 Pull request evalator
+	prEvaluator := &jobs.PullRequestEvaluator{
+		Ctx: ctx,
+		Logger: logger.GetChild("pull-request-evaluator"),
+		Cfg: cfg,
+		MDbApps: mDbApps,
+		MDbSubmissions: mDbSubmissions,
+		Gh: gh,
+	}
+	prEvaluator.Init()
+
+	go func() {
+		prEvaluator.Run()
+
+		shutdownBus <- "pull-request-evaluator"
 	}()
 
 	// {{{1 Router
@@ -187,7 +228,8 @@ func main() {
 	}).Methods("GET")
 
 	router.Handle("/apps/webhook", handlers.WebhookHandler{
-		baseHandler.GetChild("webhook"),
+		BaseHandler: baseHandler.GetChild("webhook"),
+		PullRequestEvaluator: *prEvaluator,		
 	}).Methods("POST")
 
 	// !!! Must always be last !!!
@@ -216,14 +258,30 @@ func main() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Fatalf("failed to serve: %s", err.Error())
 		}
+
+		shutdownBus <- "http-api"
 	}()
 
 	logger.Infof("started server on %s", cfg.HTTPAddr)
 
+	// {{{1 Wait for all components to shut down
 	<-ctx.Done()
 
-	if err := server.Shutdown(context.Background()); err != nil {
-		logger.Fatalf("failed to shutdown server: %s", err.Error())
+	logger.Infof("shutting down %d components", targetShutdownBusCount)
+
+	go func() {
+		if err := server.Shutdown(context.Background()); err != nil {
+			logger.Fatalf("failed to shutdown server: %s",
+				err.Error())
+		}
+	}()
+	
+	shutdownBusRecvCount := 0
+
+	for shutdownBusRecvCount < targetShutdownBusCount {
+		name := <-shutdownBus
+		shutdownBusRecvCount++
+		logger.Infof("%s component shut down (%d/%d)", name, shutdownBusRecvCount, targetShutdownBusCount)
 	}
 
 	logger.Info("done")
