@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"encoding/json"
 
-	"github.com/knative-scout/app-api/config"
+	"github.com/kscout/serverless-registry-api/config"
 
 	"github.com/Noah-Huppert/golog"
 	"go.mongodb.org/mongo-driver/mongo"

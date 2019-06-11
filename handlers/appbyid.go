@@ -3,7 +3,7 @@ package handlers
 
 import (
 
-	"github.com/knative-scout/app-api/models"
+	"github.com/kscout/serverless-registry-api/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"net/http"
 	"github.com/gorilla/mux"

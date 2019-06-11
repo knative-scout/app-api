@@ -1,32 +1,32 @@
 apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
-  name: {{ .config.env }}-app-api
+  name: {{ .config.env }}-serverless-registry-api
   labels:
-    app: app-api
+    app: serverless-registry-api
     env: {{ .config.env }}
 spec:
   replicas: 1
   selector:
-    app: app-api
+    app: serverless-registry-api
     env: {{ .config.env }}
   triggers:
     - type: ImageChange
       imageChangeParams:
         containerNames:
-          - app-api
+          - serverless-registry-api
         from:
           kind: ImageStreamTag
-          name: app-api:{{ .config.env }}-latest
+          name: serverless-registry-api:{{ .config.env }}-latest
   template:
     metadata:
       labels:
-        app: app-api
+        app: serverless-registry-api
         env: {{ .config.env }}
     spec:
       containers:
-        - name: app-api
-          image: kscout/app-api:{{ .config.env }}-latest
+        - name: serverless-registry-api
+          image: kscout/serverless-registry-api:{{ .config.env }}-latest
           env:
             - name: APP_HTTP_ADDR
               value: ":5000"
@@ -75,14 +75,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .config.env }}-app-api
+  name: {{ .config.env }}-serverless-registry-api
   labels:
-    app: app-api
+    app: serverless-registry-api
     env: {{ .config.env }}
 spec:
   type: ClusterIP
   selector:
-    app: app-api
+    app: serverless-registry-api
     env: {{ .config.env }}
   ports:
     - protocol: TCP
@@ -93,16 +93,16 @@ spec:
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ .config.env }}-app-api
+  name: {{ .config.env }}-serverless-registry-api
   labels:
-    app: app-api
+    app: serverless-registry-api
     env: {{ .config.env }}
 spec:
   host: {{ .config.host }}
   path: /
   to:
     kind: Service
-    name: {{ .config.env }}-app-api
+    name: {{ .config.env }}-serverless-registry-api
     weight: 100
   port:
     targetPort: http

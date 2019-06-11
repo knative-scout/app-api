@@ -19,20 +19,20 @@ type Config struct {
 	DbPort int `default:"27017" split_words:"true" required:"true"`
 
 	// DbUser is the MongoDB user
-	DbUser string `default:"knative-scout-dev" split_words:"true" required:"true"`
+	DbUser string `default:"kscout-dev" split_words:"true" required:"true"`
 
 	// DbPassword is the MongoDB password
 	DbPassword string `default:"secretpassword" split_words:"true" required:"true"`
 
 	// DbName is the database to connect to inside MongoDB
-	DbName string `default:"knative-scout-app-api-dev" split_words:"true" required:"true"`
+	DbName string `default:"kscout-serverless-registry-api-dev" split_words:"true" required:"true"`
 
 	// GhToken is a GitHub API token with repository read permissions
 	GhToken string `split_words:"true" required:"true"`
 
 	// GhRegistryRepoOwner is the GitHub user / organization which owns the serverless
 	// application registry repository.
-	GhRegistryRepoOwner string `default:"knative-scout" split_words:"true" required:"true"`
+	GhRegistryRepoOwner string `default:"kscout" split_words:"true" required:"true"`
 
 	// GhRegistryRepoName is the name of the GitHub repository which acts as a serverless
 	// application registry.
@@ -41,6 +41,10 @@ type Config struct {
 	// GhWebhookSecret is the secret token used to verify requests to the Webhook came
 	// from GitHub
 	GhWebhookSecret string `split_words:"true" required:"true"`
+
+	// GhDevTeamName is the name of an organization team on GitHub which should be pinged
+	// by pull request bot if any internal server errors occur
+	GhDevTeamName string `default:"@kscout/developers" split_words:"true" required:"true"`
 }
 
 // NewConfig loads configuration values from environment variables

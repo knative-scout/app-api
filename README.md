@@ -1,5 +1,5 @@
-# App API
-API which manages applications.
+# Serverless Registry API
+API which curates serverless applications.
 
 # Table Of Contents
 - [Overview](#overview)
@@ -10,7 +10,7 @@ API which manages applications.
 See [DESIGN.md](DESIGN.md)
 
 # Development
-The App API server can be run locally.  
+The API server can be run locally.  
 
 Follow the steps in the [Database](#database), [Configuration](#configuration),
 and [Run](#run) sections.
@@ -31,13 +31,13 @@ Configuration is passed via environment variables.
 - `APP_HTTP_ADDR` (String): Address to bind server, defaults to `:5000`
 - `APP_DB_HOST` (String): MongoDB host, defaults to `localhost`
 - `APP_DB_PORT` (Integer): MongoDB port, defaults to `27017`
-- `APP_DB_USER` (String): MongoDB user, defaults to `knative-scout-dev`
+- `APP_DB_USER` (String): MongoDB user, defaults to `kscout-dev`
 - `APP_DB_PASSWORD` (String): MongoDB password, defaults to `secretpassword`
 - `APP_DB_NAME` (String): MongoDB database name, defaults
-  to `knative-scout-app-api-dev`
+  to `kscout-serverless-registry-api-dev`
 - `APP_GH_TOKEN` (String): GitHub API token with repository read permissions
 - `APP_GH_REGISTRY_REPO_OWNER` (String): Owner of serverless application
-  registry repository, defaults to `knative-scout`
+  registry repository, defaults to `kscout`
 - `APP_GH_REGISTRY_REPO_NAME` (String): Name of serverless application
   registry repository, defaults to `serverless-apps`
 - `APP_GH_WEBHOOK_SECRET` (String): Secret value which was provided during the
@@ -53,20 +53,35 @@ go run .
 # Deployment
 Deployments are created for **environments**.  
 
-An environment is a separated version of the deployment.  
-Environments can be "production" or "staging".  
+An environment is a self contained deployment. Different environments hold code 
+with varying levels of stability.  
+
+The production (or "prod") environment holds the most stable code.  
+The staging environment can hold less stable code, or code who's stability is 
+not yet known.
 
 ## GitHub
 ### Webhook
 A webhook should exist for the
-[app-repository](https://github.com/knative-scout/app-repository/settings/hooks/new).  
-This webhook should send pull request events to the app pull request 
-webhook endpoint.
+[app-repository](https://github.com/kscout/app-repository/settings/hooks/new).  
 
-For the "secret" value use a randomly generated string.  
+Use a randomly generated string for the "Secret".  
+
+Select "Let me select individual events" and then "Pull requests" for the events
+which should trigger the webhook.
 
 ### API Token
-Generate an API token which has repository read access only.  
+Generate an API token which has the following scopes:
+
+- `repo`
+  - `status`
+  - `repo_deployment`
+  - `public_repo`
+- `user`
+  - `read:user`
+  - `user:email`
+- `write:discussion`
+  - `read:discussion`
 
 ## Secrets
 Deployment secrets must be set for a deployment.  
@@ -91,7 +106,28 @@ Where `ENV` can be a value like `prod` or `staging`.
 
 Then trigger a rollout:
 
+```
+oc rollout latest dc/ENV-serverless-registry-api
+```
+
+## Staging Deployment
+The `deploy/staging.sh` script can be used to deploy one's local code to the 
+staging environment.  
+
+The staging environment is configured to be served under the 
+`staging-api.kscout.io` domain.  
+
+Try to coordinate with the team before using the staging environment to avoid 
+stepping on each other's toes.
+
+To deploy to the staging environment run:
 
 ```
-oc rollout latest dc/ENV-app-api
+./deploy/staging.sh rollout
+```
+
+To view the logs from the staging environment run:
+
+```
+./deploy/staging.sh logs
 ```

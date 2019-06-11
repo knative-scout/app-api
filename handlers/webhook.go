@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/knative-scout/app-api/models"
+	"github.com/kscout/serverless-registry-api/models"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -258,7 +258,7 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		if subApp == nil {
 			status = "Internal error"
-			comment = "@knative-scout/developers please triage"
+			comment = fmt.Sprintf("%s please triage", h.Cfg.GhDevTeamName)
 		} else if subApp.VerificationStatus.FormatCorrect {
 			status = "Good"
 		} else {

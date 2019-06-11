@@ -7,9 +7,9 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/knative-scout/app-api/config"
-	"github.com/knative-scout/app-api/handlers"
-	"github.com/knative-scout/app-api/models"
+	"github.com/kscout/serverless-registry-api/config"
+	"github.com/kscout/serverless-registry-api/handlers"
+	"github.com/kscout/serverless-registry-api/models"
 
 	"github.com/Noah-Huppert/golog"
 	"github.com/google/go-github/v25/github"
@@ -35,7 +35,7 @@ func main() {
 	}()
 
 	// {{{1 Logger
-	logger := golog.NewStdLogger("app-api")
+	logger := golog.NewStdLogger("serverless-registry-api")
 
 	logger.Debug("starting")
 
