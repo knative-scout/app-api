@@ -7,6 +7,6 @@ WORKDIR /app
 
 COPY . .
 
-RUN go build -o app-api .
+RUN go build -o serverless-registry-api .
 
-CMD /app/app-api
+CMD /app/serverless-registry-api

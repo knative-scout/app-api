@@ -6,7 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 
-	"github.com/knative-scout/app-api/config"
+	"github.com/kscout/serverless-registry-api/config"
 	
 	"github.com/google/go-github/v25/github"
 	"gopkg.in/go-playground/validator.v9"

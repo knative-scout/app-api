@@ -1,4 +1,4 @@
-module github.com/knative-scout/app-api
+module github.com/kscout/serverless-registry-api
 
 go 1.12
 

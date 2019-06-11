@@ -2,12 +2,12 @@
 
 
 DB_DATA_DIR ?= container-data/db
-DB_CONTAINER_NAME ?= knative-scout-app-api-db
-DB_USER ?= knative-scout-dev
+DB_CONTAINER_NAME ?= kscout-serverless-registry-api-db
+DB_USER ?= kscout-dev
 DB_PASSWORD ?= secretpassword
 
 DOCKER_TAG_VERSION ?= dev-latest
-DOCKER_TAG ?= kscout/app-api:${DOCKER_TAG_VERSION}
+DOCKER_TAG ?= kscout/serverless-registry-api:${DOCKER_TAG_VERSION}
 
 # builds and pushes a docker image
 docker: docker-build docker-push
@@ -17,18 +17,17 @@ docker-build:
 	docker build -t ${DOCKER_TAG} .
 
 
-# Push the docker image for app-api to docker hub
+# Push to docker hub
 docker-push:
 	docker push ${DOCKER_TAG}
 
 
-# Runs the app-api docker image on local machine
+# Runs the docker image locally
 docker-run:
 	docker run -it --rm --net host ${DOCKER_TAG}
 
 
 # Start MongoDB server in container
-# Pulls docker image for latest mongo build and runs the container
 db:
 	mkdir -p ${DB_DATA_DIR}
 	docker run \

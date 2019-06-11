@@ -1,21 +1,21 @@
 apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
-  name: app-api
+  name: serverless-registry-api
   labels:
-    app: app-api
+    app: serverless-registry-api
 spec:
-  dockerImageRepository: docker.io/kscout/app-api
+  dockerImageRepository: docker.io/kscout/serverless-registry-api
   tags:
     - from:
         kind: DockerImage
-        name: docker.io/kscout/app-api:prod-latest
+        name: docker.io/kscout/serverless-registry-api:prod-latest
       name: prod-latest
       importPolicy:
         scheduled: true
     - from:
         kind: DockerImage
-        name: docker.io/kscout/app-api:staging-latest
+        name: docker.io/kscout/serverless-registry-api:staging-latest
       name: staging-latest
       importPolicy:
         scheduled: true

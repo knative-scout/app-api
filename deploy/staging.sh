@@ -31,8 +31,11 @@
 prog_dir=$(realpath $(dirname "$0"))
 
 docker_tag_version=staging-latest
-docker_repo=kscout/app-api
+docker_repo=kscout/serverless-registry-api
 docker_tag="$docker_repo:$docker_tag_version"
+
+env=staging
+deploy_app=serverless-registry-api
 
 # {{{1 Helpers
 function die() {
@@ -82,7 +85,7 @@ case "$cmd" in
 	fi
 
 	while true; do
-	    if oc describe is app-api | grep "$image_sha"; then
+	    if oc describe is "$deploy_app" | grep "$image_sha"; then
 		echo "Image stream has new $docker_tag"
 		break
 	    fi
@@ -94,14 +97,14 @@ case "$cmd" in
 	# {{{1 Roll out new docker tag
 	bold "Rolling out new $docker_tag"
 
-	if ! oc rollout latest dc/staging-app-api; then
+	if ! oc rollout latest "dc/$env-$deploy_app"; then
 	    die "Failed to rollout new $docker_tag"
 	fi
 
 	# {{{1 Wait for rollout to complete
 	bold "Waiting for rollout of $docker_tag to complete"
 
-	if ! oc rollout status dc/staging-app-api; then
+	if ! oc rollout status "dc/$env-$deploy_app"; then
 	    die "Failed to wait for rollout $docker_tag"
 	fi
 
@@ -109,7 +112,7 @@ case "$cmd" in
 	;;
     logs)
 	bold "Viewing staging logs"
-	kubectl logs -f -l app=app-api,env=staging
+	kubectl logs -f -l "app=$deploy_app,env=$env"
 	;;
     *)
 	die "Unknown command $cmd"

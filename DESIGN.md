@@ -18,7 +18,7 @@ Responses will always return JSON.
 ## App Model
 `apps` collection.
 
-[Documentation of schema fields](https://godoc.org/github.com/knative-scout/app-api/models#App)
+[Documentation of schema fields](https://godoc.org/github.com/kscout/serverless-registry-api/models#App)
 
 Schema:
 
@@ -39,7 +39,7 @@ Schema:
 ## Submission Model
 `submissions` collection.
 
-[Documentation of schema fields](https://godoc.org/github.com/knative-scout/app-api/models#Submission)
+[Documentation of schema fields](https://godoc.org/github.com/kscout/serverless-registry-api/models#Submission)
 
 Schema:
 

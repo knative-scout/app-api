@@ -3,7 +3,7 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/knative-scout/app-api/models"
+	"github.com/kscout/serverless-registry-api/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"net/http"
 	"strings"
