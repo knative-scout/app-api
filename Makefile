@@ -24,7 +24,7 @@ docker-push:
 
 # Runs the docker image locally
 docker-run:
-	docker run -it --rm --net host ${DOCKER_TAG}
+	docker run -it --rm -e APP_GH_TOKEN=${APP_GH_TOKEN} -e APP_GH_WEBHOOK_SECRET=${APP_GH_WEBHOOK_SECRET} --net host ${DOCKER_TAG}
 
 
 # Start MongoDB server in container

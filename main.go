@@ -190,6 +190,10 @@ func main() {
 		baseHandler.GetChild("webhook"),
 	}).Methods("POST")
 
+	router.Handle("/nsearch", handlers.SmartSearchHandler{
+		baseHandler.GetChild("nsearch"),
+	}).Methods("GET")
+
 	// !!! Must always be last !!!
 	router.Handle("/", handlers.PreFlightOptionsHandler{
 		baseHandler.GetChild("pre-flight-options"),
