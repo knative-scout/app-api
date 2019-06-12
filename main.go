@@ -9,7 +9,6 @@ import (
 
 	"github.com/kscout/serverless-registry-api/config"
 	"github.com/kscout/serverless-registry-api/handlers"
-	"github.com/kscout/serverless-registry-api/models"
 	"github.com/kscout/serverless-registry-api/jobs"
 
 	"github.com/Noah-Huppert/golog"
@@ -112,7 +111,7 @@ func main() {
 	// {{{1 Setup component shutdown bus
 	// targetShutdownBusCount is the number of messages which must be received on
 	// shutdownBus before the process will exit gracefully
-	targetShutdownBusCount := 3
+	targetShutdownBusCount := 2
 	
 	// shutdownBus receives a message with a component's name when a component shuts down.
 	// This lets the process wait until all of its components have been shut down gracefully
@@ -120,8 +119,7 @@ func main() {
 	//
 	// Currently the process has the following components:
 	//
-	//    - (populate-apps-db) Initial apps collection populator
-	//    - (pull-request-evaluator) Pull request evaluator
+	//    - (job-runner): Job runner
 	//    - (http-api) HTTP API server
 	// 
 	// The end of the program will wait for targetShutdownBusCount number of messages to
@@ -129,11 +127,25 @@ func main() {
 	// message on the bus when they are done.
 	shutdownBus := make(chan string, targetShutdownBusCount)
 
-	// {{{1 Load serverless application registry repository state if database is empty
+	// {{{1 Pull request evalator
+	jobRunner := &jobs.JobRunner{
+		Ctx: ctx,
+		Logger: logger.GetChild("job-runner"),
+		Cfg: cfg,
+		GH: gh,
+		MDbApps: mDbApps,
+	}
+	jobRunner.Init()
+
+	go func() {
+		jobRunner.Run()
+
+		shutdownBus <- "job-runner"
+	}()
+
+	// {{{1 Load applications from database if none exist yet
 	go func() {
 		loadLogger := logger.GetChild("populate-apps-db")
-
-		loadLogger.Debug("checking if Db must be populated from GitHub registry repository")
 
 		// {{{1 Check if empty
 		docCount, err := mDbApps.CountDocuments(ctx, bson.D{{}}, nil)
@@ -145,54 +157,15 @@ func main() {
 		if docCount > 0 {
 			loadLogger.Debugf("no load required, found %d app(s) in database",
 				docCount)
-			shutdownBus <- "populate-apps-db"
 			return
 		}
 
 		// {{{1 Load all apps if empty
-		appLoader := models.AppLoader{
-			Ctx: ctx,
-			Gh:  gh,
-			Cfg: cfg,
-		}
-
-		apps, err := appLoader.LoadAllAppsFromRegistry("")
-		if err != nil {
-			loadLogger.Fatalf("failed to load apps: %s", err.Error())
-		}
-
-		// {{{1 Insert
-		insertDocs := []interface{}{}
-
-		for _, app := range apps {
-			insertDocs = append(insertDocs, *app)
-		}
-
-		_, err = mDbApps.InsertMany(ctx, insertDocs, nil)
-		if err != nil {
-			loadLogger.Fatalf("failed to insert apps into db: %s", err.Error())
-		}
-
-		loadLogger.Debugf("loaded %d app(s) into database", len(apps))
-
-		shutdownBus <- "populate-apps-db"
-	}()
-
-	// {{{1 Pull request evalator
-	prEvaluator := &jobs.PullRequestEvaluator{
-		Ctx: ctx,
-		Logger: logger.GetChild("pull-request-evaluator"),
-		Cfg: cfg,
-		MDbApps: mDbApps,
-		MDbSubmissions: mDbSubmissions,
-		Gh: gh,
-	}
-	prEvaluator.Init()
-
-	go func() {
-		prEvaluator.Run()
-
-		shutdownBus <- "pull-request-evaluator"
+		loadLogger.Debugf("no apps found, will load apps into database")
+		
+		jobRunner.Submit(jobs.JobStartRequest{
+			Type: jobs.JobTypeUpdateApps,
+		})
 	}()
 
 	// {{{1 Router
@@ -230,7 +203,7 @@ func main() {
 
 	router.Handle("/apps/webhook", handlers.WebhookHandler{
 		BaseHandler: baseHandler.GetChild("webhook"),
-		PullRequestEvaluator: *prEvaluator,		
+		JobRunner: jobRunner,
 	}).Methods("POST")
 
 	// !!! Must always be last !!!

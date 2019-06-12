@@ -4,14 +4,14 @@ import (
 	"regexp"
 )
 
-// contactStringExp matches a string which holds contact information in the format:
+// ContactStrExp matches a string which holds contact information in the format:
 //
 //    NAME <EMAIL>
 //
 // Groups:
 //    1. NAME
 //    2. EMAIL
-var contactStringExp *regexp.Regexp = regexp.MustCompile("(.+) (<.+@.+>)")
+var ContactStrExp *regexp.Regexp = regexp.MustCompile("(.+) (<.+@.+>)")
 
 // VerStatusT is a type which valid values for App.VerificationStatus are
 // represented as
@@ -46,11 +46,11 @@ type App struct {
 	Categories []string `json:"categories" bson:"categories" validate:"required"`
 
 	// Author is the person who created the app
-	// Must match the contactStringExp
+	// Must match the ContactStrExp
 	Author string `yaml:"author" json:"author" bson:"author" validate:"required"`
 
 	// Maintainer is the person who will support the app
-	// Must match the contactStringExp
+	// Must match the ContactStrExp
 	Maintainer string `yaml:"maintainer" json:"author" bson:"maintainer" validate:"required"`
 	
 	// AppID is a human and computer readable identifier for the application

@@ -3,22 +3,22 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"encoding/json"
 	"crypto/hmac"
 	"crypto/sha1"
 	"io/ioutil"
 	"encoding/hex"
-	"encoding/json"
 
 	"github.com/kscout/serverless-registry-api/jobs"
 	"github.com/google/go-github/v26/github"
 )
 
-// WebhookHandler handles registry repository pull request webhook requests
+// WebhookHandler handles GitHub App pull requests
 type WebhookHandler struct {
 	BaseHandler
 
-	// PullRequestEvaluator evaluates new pull requests and provides feedback to the user
-	PullRequestEvaluator jobs.PullRequestEvaluator
+	// JobRunner is used to run jobs
+	JobRunner *jobs.JobRunner
 }
 
 // ServeHTTP implements net.Handler
@@ -54,8 +54,7 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// {{{1 Determine if webhook should do anything
-	// {{{2 Check if we can handle this type of event
+	// {{{1 Spawn action depending on event type
 	eventTypeHeader, ok := r.Header["X-Github-Event"]
 	if !ok || len(eventTypeHeader) != 1 {
 		h.RespondJSON(w, http.StatusBadRequest, map[string]string{
@@ -73,118 +72,31 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	case "pull_request":
-		break
-	case "push":
-		break
+		// {{{2 Parse so we can tell if the event is for a PR just getting merged
+		var event github.PullRequestEvent
+
+		if err := json.Unmarshal(bodyBytes, &event); err != nil {
+			panic(fmt.Errorf("failed to parse pull request event body as JSON: %s",
+				err.Error()))
+		}
+
+		// {{{2 Start update job if PR was just merged
+		if *event.Action == "closed" && *event.PullRequest.Merged {
+			h.JobRunner.Submit(jobs.JobStartRequest{
+				Type: jobs.JobTypeUpdateApps,
+			})
+		}
+	case "check_run":
+		h.JobRunner.Submit(jobs.JobStartRequest{
+			Type: jobs.JobTypeValidate,
+			Data: bodyBytes,
+		})
 	default:
 		h.RespondJSON(w, http.StatusNotAcceptable, map[string]string{
 			"error": fmt.Sprintf("cannot handle event type: %s", eventType),
 		})
 	}
 
-	// {{{2 Parse request body to determine what triggered event
-	var prEvalSubmissions []jobs.PREvalSubmission
-	var repoOwner string
-	var repoName string
-	var validEvent bool
-
-	switch eventType {
-	case "pull_request":
-		// {{{3 Parse
-		var req github.PullRequestEvent
-
-		if err := json.Unmarshal(bodyBytes, &req); err != nil {
-			panic(fmt.Errorf("failed to parse pull request event body as JSON: %s",
-				err.Error()))
-		}
-
-		repoOwner = *req.PullRequest.Base.Repo.Owner.Login
-		repoName = *req.PullRequest.Base.Repo.Name
-
-		// {{{3 Exit early if the PR event action does not indicate code changes
-		// isMergeEvent indicates if the merge button was just clicked on a PR
-		// button on the PR.
-		isMergeEvent := *req.Action == "closed" && *req.PullRequest.Merged
-		validEvent = *req.Action == "opened" || isMergeEvent
-
-		// {{{3 Make PREvalSubmission
-		prEvalSubmissions = append(prEvalSubmissions, jobs.PREvalSubmission{
-			PR: *req.PullRequest,
-			OnlyUpdateDB: isMergeEvent,
-		})
-	case "push":
-		// {{{3 Parse
-		var req github.PushEvent
-
-		if err := json.Unmarshal(bodyBytes, &req); err != nil {
-			panic(fmt.Errorf("failed to parse push event body as JSON: %s",
-				err.Error()))
-		}
-
-		repoOwner = *req.Repo.Owner.Login
-		repoName = *req.Repo.Name
-
-		// {{{3 Find PRs which include commits that were pushed
-		// relevantPRs is a set which holds the pull requests which have code changes
-		// keys are pull request numbers, values are pull requests
-		relevantPRs := map[int]github.PullRequest{}
-
-		for _, commit := range req.Commits {
-			// {{{4 Get PRs to which commit belongs
-			commitPRs, _, err := h.Gh.PullRequests.ListPullRequestsWithCommit(h.Ctx,
-				h.Cfg.GhRegistryRepoOwner, h.Cfg.GhRegistryRepoName,
-				*commit.ID, nil)
-			if err != nil {
-				panic(fmt.Errorf("failed to list PRs which include commit "+
-					"with sha \"%s\": %s", *commit.ID, err.Error()))
-			}
-
-			// {{{4 Catalog relevant commits
-			for _, pr := range commitPRs {
-				// Ignore PRs where this commit is the merge commit
-				if pr.MergeCommitSHA != nil &&
-					*pr.MergeCommitSHA == *commit.ID {
-					continue
-				}
-				
-				relevantPRs[*pr.Number] = *pr
-			}
-		}
-
-		// {{{3 Create PREvalSubmissions
-		for _, pr := range relevantPRs {
-			prEvalSubmissions = append(prEvalSubmissions, jobs.PREvalSubmission{
-				PR: pr,
-				OnlyUpdateDB: false,
-			})
-		}
-
-		// {{{3 Exit early if none of the pushed commits reference a pull request
-		validEvent = len(relevantPRs) > 0
-	}
-
-	// {{{2 Exit early if the event we received is not one we want to handle
-	if !validEvent {
-		h.RespondJSON(w, http.StatusOK, map[string]bool{
-			"ok": true,
-		})
-		return
-	}
-
-	// {{{2 Check if we can handler events from this repository
-	if repoOwner != h.Cfg.GhRegistryRepoOwner || repoName != h.Cfg.GhRegistryRepoName {
-		h.RespondJSON(w, http.StatusNotAcceptable, map[string]string{
-			"error": "endpoint does not handle requests from this repository",
-		})
-		return
-	}
-
-	// {{{1 Submit PR evaluation requests
-	for _, evalSubmission := range prEvalSubmissions {
-		h.PullRequestEvaluator.Submit(evalSubmission)
-	}
-
-	// {{{1 Return success response to GitHub
 	h.RespondJSON(w, http.StatusOK, map[string]bool{
 		"ok": true,
 	})
