@@ -66,6 +66,7 @@ func (r *JobRunner) Init() {
 	}
 	r.jobInstances[JobTypeValidate] = ValidateJob{
 		Ctx: r.Ctx,
+		Logger: r.Logger.GetChild("job.validate"),
 		Cfg: r.Cfg,
 		GH: r.GH,
 	}
@@ -96,6 +97,8 @@ func (r JobRunner) Run() {
 				r.Logger.Errorf("failed to run %s job: %s",
 					req.Type, err.Error())
 			}
+
+			r.Logger.Debugf("ran %s job", req.Type)
 		}
 	}
 }

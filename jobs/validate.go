@@ -10,6 +10,7 @@ import (
 	"github.com/kscout/serverless-registry-api/config"
 	
 	"github.com/google/go-github/v26/github"
+	"github.com/Noah-Huppert/golog"
 )
 
 // ValidateJob updates the apps collection based on the current master branch state
@@ -18,6 +19,9 @@ import (
 type ValidateJob struct {
 	// Ctx
 	Ctx context.Context
+
+	// Logger
+	Logger golog.Logger
 
 	// Cfg is the server configuration
 	Cfg *config.Config
@@ -36,9 +40,9 @@ func (j ValidateJob) Do(data []byte) error {
 	}
 
 	// {{{1 Create check run
-	checkRunStatus :="in_progess"
-	checkRun, _, err := j.GH.Checks.CreateCheckRun(j.Ctx, *pr.Head.Repo.Owner.Login,
-		*pr.Head.Repo.Name, github.CreateCheckRunOptions{
+	checkRunStatus :="in_progress"
+	checkRun, _, err := j.GH.Checks.CreateCheckRun(j.Ctx, j.Cfg.GhRegistryRepoOwner,
+		j.Cfg.GhRegistryRepoName, github.CreateCheckRunOptions{
 			Name: "validate",
 			HeadBranch: *pr.Head.Ref,
 			HeadSHA: *pr.Head.SHA,
@@ -53,8 +57,8 @@ func (j ValidateJob) Do(data []byte) error {
 	prParser := parsing.PRParser{
 		Ctx: j.Ctx,
 		GH: j.GH,
-		RepoOwner: *pr.Head.Repo.Owner.Login,
-		RepoName: *pr.Head.Repo.Name,
+		RepoOwner: j.Cfg.GhRegistryRepoOwner,
+		RepoName: j.Cfg.GhRegistryRepoName,
 		RepoRef: *pr.Head.Ref,
 		PRNumber: *pr.Number,
 	}
@@ -68,8 +72,8 @@ func (j ValidateJob) Do(data []byte) error {
 	repoParser := parsing.RepoParser{
 		Ctx: j.Ctx,
 		GH: j.GH,
-		RepoOwner: *pr.Head.Repo.Owner.Login,
-		RepoName: *pr.Head.Repo.Name,
+		RepoOwner: j.Cfg.GhRegistryRepoOwner,
+		RepoName: j.Cfg.GhRegistryRepoName,
 		RepoRef: *pr.Head.Ref,
 	}
 
@@ -97,8 +101,8 @@ func (j ValidateJob) Do(data []byte) error {
 
 	checkRunStatus = "completed"
 	
-	_, _, err = j.GH.Checks.UpdateCheckRun(j.Ctx, *pr.Head.Repo.Owner.Login,
-		*pr.Head.Repo.Name, *checkRun.ID, github.UpdateCheckRunOptions{
+	_, _, err = j.GH.Checks.UpdateCheckRun(j.Ctx, j.Cfg.GhRegistryRepoOwner,
+		j.Cfg.GhRegistryRepoName, *checkRun.ID, github.UpdateCheckRunOptions{
 			Name: "validate",
 			CompletedAt: &github.Timestamp{ time.Now() },
 			Status: &checkRunStatus,
@@ -151,16 +155,18 @@ func (j ValidateJob) Do(data []byte) error {
 				"serverless application. The development team has been notified "+
 				"and will triage this issue as soon as they can.  \n"
 		}
-		
-		commentBody += err.UserError()
+
+		commentBody += fmt.Sprintf("**What**: %s  \n", err.What)
+		commentBody += fmt.Sprintf("**Why**:  \n```\n%s\n```  \n", err.Why)
+		commentBody += fmt.Sprintf("**How to fix**: %s  \n", err.FixInstructions)
 	}
 
 	commentBody += "  \n---  \n"+
 		"*I am a bot*"
 
 	// {{{2 Make comment
-	_, _, err = j.GH.Issues.CreateComment(j.Ctx, *pr.Head.Repo.Owner.Login,
-		*pr.Head.Repo.Name, *pr.Number, &github.IssueComment{
+	_, _, err = j.GH.Issues.CreateComment(j.Ctx, j.Cfg.GhRegistryRepoOwner,
+		j.Cfg.GhRegistryRepoName, *pr.Number, &github.IssueComment{
 			Body: &commentBody,
 		})
 
