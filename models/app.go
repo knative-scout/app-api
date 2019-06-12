@@ -54,7 +54,7 @@ type App struct {
 	Maintainer string `yaml:"maintainer" json:"author" bson:"maintainer" validate:"required"`
 	
 	// AppID is a human and computer readable identifier for the application
-	AppID string `json:"id" bson:"app_id" validate:"required"`
+	AppID string `json:"app_id" bson:"app_id" validate:"required"`
 
 	// Description is more detailed markdown formatted information about the app
 	Description string `json:"description" bson:"description" validate:"required"`
