@@ -91,7 +91,7 @@ func main() {
 	logger.Debug("authenticating with GitHub API")
 
 	ghAPIKeyTransport, err := ghinstallation.NewKeyFromFile(http.DefaultTransport,
-		cfg.GhIntegrationID, cfg.GhInstallationID, cfg.GhSecretKeyPath)
+		cfg.GhIntegrationID, cfg.GhInstallationID, cfg.GhPrivateKeyPath)
 	if err != nil {
 		logger.Fatalf("failed to load GitHub API secret key file: %s", err.Error())
 	}
