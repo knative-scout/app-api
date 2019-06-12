@@ -79,7 +79,7 @@ func (p RepoParser) GetDownloadURLs(path string) ([]string, error) {
 			continue
 		}
 
-		urls = append(urls, *content.HTMLURL)
+		urls = append(urls, *content.DownloadURL)
 	}
 
 	return urls, nil
@@ -133,8 +133,13 @@ func (p RepoParser) GetApp(id string) (*models.App, *ParseError) {
 
 	app.AppID = id
 	app.VerificationStatus = models.VerificationStatusPending
+
+	ghURLRef := "master"
+	if len(p.RepoRef) > 0 {
+		ghURLRef = p.RepoRef
+	}
 	app.GitHubURL = fmt.Sprintf("https://github.com/%s/%s/tree/%s/%s",
-		p.RepoOwner, p.RepoName, p.RepoRef, id)
+		p.RepoOwner, p.RepoName, ghURLRef, id)
 
 	// found tracks if a file / directory has been found in the registry
 	found := map[string]bool{
