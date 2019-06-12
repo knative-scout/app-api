@@ -37,7 +37,6 @@ func (h SmartSearchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func smartSearchDB(query string,  h SmartSearchHandler ) []models.App{
 
 	// else, construct a bson query will all the required parameters and find in database
-	//db.messages.find({$text: {$search: "smart birds who cook"}}, {score: {$meta: "text Score"}}).sort({score:{$meta:"text Score"}})
 	searchBson := bson.D{}
 	if len(query)>0{
 		searchBson = append(searchBson, bson.E{
