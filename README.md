@@ -35,7 +35,7 @@ Configuration is passed via environment variables.
 - `APP_DB_PASSWORD` (String): MongoDB password, defaults to `secretpassword`
 - `APP_DB_NAME` (String): MongoDB database name, defaults
   to `kscout-serverless-registry-api-dev`
-- `APP_GH_SECRET_KEY_PATH` (String): Path to GitHub App secret key
+- `APP_GH_PRIVATE_KEY_PATH` (String): Path to GitHub App's private key
 - `APP_GH_INTEGRATION_ID` (Integer): ID of GitHub APP, find in
   GitHub.com > Settings > Developer setting > GitHub Apps > YOUR GITHUB APP >
   General > About > App ID
@@ -80,7 +80,7 @@ Create a GitHub App with the following parameters:
 - **Permissions**:
   - *Checks*: Read & write
   - *Repository contents*: Read-only
-  - *Pull requests*: Read-only
+  - *Pull requests*: Read & write
 - **Subscribe to events**:
   - *Check run*
   - *Pull request*
@@ -110,7 +110,7 @@ Create a JSON / YAML / TOML file with the following structure:
 - `mongo` (Object): Secrets for Mongo database
   - `password` (String): Password to be used when creating account for API
 - `github` (Object): GitHub secrets
-  - `secretKeyPath` (String): Path to GitHub App secret key
+  - `privateKey` (String): GitHub App private key
   - `webhookSecret` (String): Secret used by GitHub to sign HMACs for requests
 	made to the API webhook endpoint
   

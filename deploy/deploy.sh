@@ -24,7 +24,7 @@
 #    - mongo (Object): MongoDB secrets
 #      - password (String): API user password
 #    - github (Object): GitHub secrets
-#      - apiToken (String): API token with which to make authenticated API calls
+#      - privateKey (String): GitHub App private key
 #      - webhookSecret (String): Secret GitHub uses to sign an HMAC of requests sent
 #                                to the API webhook endpoint
 #

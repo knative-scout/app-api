@@ -27,8 +27,8 @@ type Config struct {
 	// DbName is the database to connect to inside MongoDB
 	DbName string `default:"kscout-serverless-registry-api-dev" split_words:"true" required:"true"`
 
-	// GhSecretKeyPath is the path to the GitHub app's secret key
-	GhSecretKeyPath string `default:"gh.private-key.pem" split_words:"true" required:"true"`
+	// GhPrivateKeyPath is the path to the GitHub app's secret key
+	GhPrivateKeyPath string `default:"gh.private-key.pem" split_words:"true" required:"true"`
 
 	// GhIntegrationID is the Scout Bot GitHub App ID
 	GhIntegrationID int `split_words:"true" required:"true"`
