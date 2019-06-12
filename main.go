@@ -13,12 +13,12 @@ import (
 	"github.com/kscout/serverless-registry-api/jobs"
 
 	"github.com/Noah-Huppert/golog"
-	"github.com/google/go-github/v25/github"
+	"github.com/google/go-github/v26/github"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"golang.org/x/oauth2"
+	"github.com/bradleyfalzon/ghinstallation"
 )
 
 func main() {
@@ -91,12 +91,13 @@ func main() {
 	// {{{2 Create client
 	logger.Debug("authenticating with GitHub API")
 
-	ghTokenSrc := oauth2.StaticTokenSource(&oauth2.Token{
-		AccessToken: cfg.GhToken,
-	})
-	ghTokenClient := oauth2.NewClient(ctx, ghTokenSrc)
+	ghAPIKeyTransport, err := ghinstallation.NewKeyFromFile(http.DefaultTransport,
+		cfg.GhIntegrationID, cfg.GhInstallationID, cfg.GhSecretKeyPath)
+	if err != nil {
+		logger.Fatalf("failed to load GitHub API secret key file: %s", err.Error())
+	}
 
-	gh := github.NewClient(ghTokenClient)
+	gh := github.NewClient(&http.Client{Transport: ghAPIKeyTransport})
 
 	// {{{2 Ensure registry repository exists
 	_, _, err = gh.Repositories.Get(ctx, cfg.GhRegistryRepoOwner,

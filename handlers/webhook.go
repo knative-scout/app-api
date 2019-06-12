@@ -10,8 +10,7 @@ import (
 	"encoding/json"
 
 	"github.com/kscout/serverless-registry-api/jobs"
-
-	"github.com/google/go-github/v25/github"
+	"github.com/google/go-github/v26/github"
 )
 
 // WebhookHandler handles registry repository pull request webhook requests
