@@ -86,15 +86,34 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				Type: jobs.JobTypeUpdateApps,
 			})
 		}
-	case "check_run":
-		h.JobRunner.Submit(jobs.JobStartRequest{
-			Type: jobs.JobTypeValidate,
-			Data: bodyBytes,
-		})
+	case "check_suite":
+		// {{{2 Parse as CheckSuiteEvent so we can extract pull requests
+		var event github.CheckSuiteEvent
+
+		if err := json.Unmarshal(bodyBytes, &event); err != nil {
+			panic(fmt.Errorf("failed to parse check run event body as JSON: %s",
+				err.Error()))
+		}
+
+		// {{{2 Start job for each pull request
+		checkSuite := *event.CheckSuite
+		for _, pr := range checkSuite.PullRequests {
+			// {{{3 Marshal PR back to bytes
+			prBytes, err := json.Marshal(*pr)
+			if err != nil {
+				panic(fmt.Errorf("failed to marshal PR into JSON: %s",
+					err.Error()))
+			}
+			h.JobRunner.Submit(jobs.JobStartRequest{
+				Type: jobs.JobTypeValidate,
+				Data: prBytes,
+			})
+		}
 	default:
 		h.RespondJSON(w, http.StatusNotAcceptable, map[string]string{
 			"error": fmt.Sprintf("cannot handle event type: %s", eventType),
 		})
+		return
 	}
 
 	h.RespondJSON(w, http.StatusOK, map[string]bool{
