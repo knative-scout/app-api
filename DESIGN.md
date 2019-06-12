@@ -78,13 +78,37 @@ If no search parameters are provided all applications will be returned.
 
 Request:
 
-- `query` (Optional, String): Natural language query
+- `query` (Optional, String): Search Keywords
 - `tags` (Optional, List[String]): Tags applications must have
 - `categories` (Optional, List[String]): Categories applications must be part of
 
 Response:
 
 - `apps` (List[[App Model](#app-model)])
+
+### Natural Search
+`GET /nsearch?query=<query>`
+
+Search serverless apps in hub using natural language query.
+
+If no search parameters are provided all applications will be returned.
+
+**Exclude words from your search**<br/>
+Put - in front of a word you want to leave out. For example, python app -flask
+
+**Search for an exact match**<br/>
+Put a word or phrase inside quotes. For example, "nodejs" app
+
+
+Request:
+
+- `query` (Optional, String): Natural Language Query
+
+Response:
+
+- `apps` (List[[App Model](#app-model)])
+
+
 
 ### Get App By ID
 `GET /apps/id/<app_id>`
