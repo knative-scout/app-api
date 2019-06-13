@@ -68,6 +68,10 @@ func (j ValidateJob) Do(data []byte) error {
 			err.Error())
 	}
 
+	if len(appIDs) == 0 {
+		return nil
+	}
+
 	// {{{1 Load each application
 	repoParser := parsing.RepoParser{
 		Ctx: j.Ctx,
