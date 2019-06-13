@@ -191,25 +191,6 @@ func (p RepoParser) GetApp(id string) (*models.App, *ParseError) {
 					}
 				}
 
-				// {{{2 Using custom validation for author and maintainer fields
-				if !models.ContactStrExp.Match([]byte(manifest.Author)) {
-					return nil, &ParseError{
-						What: fmt.Sprintf("%s file for app in `%s` directory", *content.Name, id),
-						Why: "author field not in format \"NAME <EMAIL>\"",
-						FixInstructions: "make field conform to specified format",
-						InternalError: nil,
-					}
-				}
-
-				if !models.ContactStrExp.Match([]byte(manifest.Maintainer)) {
-					return nil, &ParseError{
-						What: fmt.Sprintf("%s file for app in `%s` directory", *content.Name, id),
-						Why: "maintainer field not in format \"NAME <EMAIL>\"",
-						FixInstructions: "make field conform to specified format",
-						InternalError: nil,
-					}
-				}
-
 				// {{{2 Assign values from manifestFile to app
 				// {{{3 Downcase tags and categories
 				for _, tag := range manifest.Tags {
