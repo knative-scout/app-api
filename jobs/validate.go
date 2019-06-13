@@ -43,7 +43,7 @@ func (j ValidateJob) Do(data []byte) error {
 	checkRunStatus :="in_progress"
 	checkRun, _, err := j.GH.Checks.CreateCheckRun(j.Ctx, j.Cfg.GhRegistryRepoOwner,
 		j.Cfg.GhRegistryRepoName, github.CreateCheckRunOptions{
-			Name: "validate",
+			Name: "KScout Validation",
 			HeadBranch: *pr.Head.Ref,
 			HeadSHA: *pr.Head.SHA,
 			StartedAt: &github.Timestamp{ time.Now() },
@@ -86,37 +86,13 @@ func (j ValidateJob) Do(data []byte) error {
 		}
 	}
 
-	// {{{1 Update check run status
-	conclusion := "success"
-	if len(parseErrs) > 0 {
-		conclusion = "failure"
-	}
-
-	for _, err := range parseErrs {
-		if err.InternalError != nil {
-			conclusion = "cancelled"
-			break
-		}
-	}
-
-	checkRunStatus = "completed"
-	
-	_, _, err = j.GH.Checks.UpdateCheckRun(j.Ctx, j.Cfg.GhRegistryRepoOwner,
-		j.Cfg.GhRegistryRepoName, *checkRun.ID, github.UpdateCheckRunOptions{
-			Name: "validate",
-			CompletedAt: &github.Timestamp{ time.Now() },
-			Status: &checkRunStatus,
-			Conclusion: &conclusion,
-		})
-	if err != nil {
-		return fmt.Errorf("failed to update check run: %s", err.Error())
-	}
-
 	// {{{1 Comment with validation result
 	// {{{2 Build app status overview table
 	commentBody := "I've taken a look at your pull request, here is the "+
 		"current status of the applications you modified:  \n"+
-		"\n  "+
+		"\n  "
+
+	statusTable := ""+
 		"| App ID | Status | Comment |  \n"+
 		"| ------ | ------ | ------- |  \n"
 
@@ -137,8 +113,10 @@ func (j ValidateJob) Do(data []byte) error {
 			comment = ":+1:"
 		}
 
-		commentBody += fmt.Sprintf("| %s | %s | %s |", appID, status, comment)
+		statusTable += fmt.Sprintf("| %s | %s | %s |", appID, status, comment)
 	}
+
+	commentBody += statusTable
 
 	// {{{2 Place any detailed error messages
 	if len(parseErrs) > 0 {
@@ -147,19 +125,22 @@ func (j ValidateJob) Do(data []byte) error {
 			"I found some errors with the changes made in this pull request:  \n"
 	}
 
+	errsDetails := ""
 	for appID, err := range parseErrs {
-		commentBody += fmt.Sprintf("## App ID %s\n", appID)
+		errsDetails += fmt.Sprintf("## App ID %s\n", appID)
 
 		if err.InternalError != nil {
-			commentBody += "> Sometime went wrong on our servers when parsing this "+
+			errsDetails += "> Sometime went wrong on our servers when parsing this "+
 				"serverless application. The development team has been notified "+
 				"and will triage this issue as soon as they can.  \n"
 		}
 
-		commentBody += fmt.Sprintf("**What**: %s  \n", err.What)
-		commentBody += fmt.Sprintf("**Why**:  \n```\n%s\n```  \n", err.Why)
-		commentBody += fmt.Sprintf("**How to fix**: %s  \n", err.FixInstructions)
+		errsDetails += fmt.Sprintf("### What failed?\n%s  \n", err.What)
+		errsDetails += fmt.Sprintf("### Why did it fail?\n```\n%s\n```  \n", err.Why)
+		errsDetails += fmt.Sprintf("### How to fix it\n%s  \n", err.FixInstructions)
 	}
+
+	commentBody += errsDetails
 
 	commentBody += "  \n---  \n"+
 		"*I am a bot*"
@@ -172,6 +153,41 @@ func (j ValidateJob) Do(data []byte) error {
 
 	if err != nil {
 		return fmt.Errorf("failed to create comment on PR: %s", err.Error())
+	}
+
+	// {{{1 Update check run status
+	title := "Passed"
+	conclusion := "success"
+	
+	if len(parseErrs) > 0 {
+		title = "Failed"
+		conclusion = "failure"
+	}
+
+	for _, err := range parseErrs {
+		if err.InternalError != nil {
+			title = "Internal Error"
+			conclusion = "cancelled"
+			break
+		}
+	}
+
+	checkRunStatus = "completed"
+	
+	_, _, err = j.GH.Checks.UpdateCheckRun(j.Ctx, j.Cfg.GhRegistryRepoOwner,
+		j.Cfg.GhRegistryRepoName, *checkRun.ID, github.UpdateCheckRunOptions{
+			Name: "validate",
+			CompletedAt: &github.Timestamp{ time.Now() },
+			Status: &checkRunStatus,
+			Conclusion: &conclusion,
+			Output: &github.CheckRunOutput{
+				Title: &title,
+				Summary: &statusTable,
+				Text: &errsDetails,
+			},
+		})
+	if err != nil {
+		return fmt.Errorf("failed to update check run: %s", err.Error())
 	}
 
 	return nil
