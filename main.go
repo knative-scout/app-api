@@ -90,7 +90,7 @@ func main() {
 	// {{{2 Ensure database indexes exist
 	mDbAppsIndexes := mDbApps.Indexes()
 	
-	_, err := mDbAppsIndexes.CreateOne(ctx, mongo.IndexModel{
+	_, err = mDbAppsIndexes.CreateOne(ctx, mongo.IndexModel{
 		Keys: bson.D{{"$**", "text"}},
 	})
 	if err != nil {
