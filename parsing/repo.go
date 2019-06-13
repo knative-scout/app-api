@@ -112,7 +112,7 @@ func (p RepoParser) GetApp(id string) (*models.App, *ParseError) {
 		})
 	if err != nil {
 		return nil, &ParseError{
-			What: fmt.Sprintf("app in %s directory", id),
+			What: fmt.Sprintf("app in `%s` directory", id),
 			Why: "the GitHub API returned an error response",
 			FixInstructions: fmt.Sprintf("%s will triage this issue", p.GHDevTeamName),
 			InternalError: err,
@@ -121,7 +121,7 @@ func (p RepoParser) GetApp(id string) (*models.App, *ParseError) {
 
 	if len(dirContents) == 0 {
 		return nil, &ParseError{
-			What: fmt.Sprintf("app in %s directory", id),
+			What: fmt.Sprintf("app in `%s` directory", id),
 			Why: "no content found",
 			FixInstructions: "add required files",
 			InternalError: nil,
@@ -153,7 +153,7 @@ func (p RepoParser) GetApp(id string) (*models.App, *ParseError) {
 		// {{{2 Check if file / directory is supposed to be there
 		if _, ok := found[*content.Name]; !ok {
 			return nil, &ParseError{
-				What: fmt.Sprintf("%s %s for app in %s directory",
+				What: fmt.Sprintf("`%s` %s for app in `%s` directory",
 					*content.Name, *content.Type, id),
 				Why: "should not exist",
 				FixInstructions: fmt.Sprintf("delete this %s", *content.Type),
@@ -172,7 +172,7 @@ func (p RepoParser) GetApp(id string) (*models.App, *ParseError) {
 				txt, err := p.GetFileContent(fmt.Sprintf("%s/%s", id, *content.Name))
 				if err != nil {
 					return nil, &ParseError{
-						What: fmt.Sprintf("%s file for app in %s directory", *content.Name, id),
+						What: fmt.Sprintf("`%s` file for app in `%s` directory", *content.Name, id),
 						Why: "failed to get contents from GitHub API, error response returned",
 						FixInstructions: fmt.Sprintf("%s will triage this issue", p.GHDevTeamName),
 						InternalError: err,
@@ -184,7 +184,7 @@ func (p RepoParser) GetApp(id string) (*models.App, *ParseError) {
 				err = yaml.UnmarshalStrict([]byte(txt), &manifest)
 				if err != nil {
 					return nil, &ParseError{
-						What: fmt.Sprintf("%s file for app in %s directory", *content.Name, id),
+						What: fmt.Sprintf("`%s` file for app in `%s` directory", *content.Name, id),
 						Why: fmt.Sprintf("failed to parse as YAML: %s", err.Error()),
 						FixInstructions: "fix YAML syntax",
 						InternalError: nil,
@@ -194,7 +194,7 @@ func (p RepoParser) GetApp(id string) (*models.App, *ParseError) {
 				// {{{2 Using custom validation for author and maintainer fields
 				if !models.ContactStrExp.Match([]byte(manifest.Author)) {
 					return nil, &ParseError{
-						What: fmt.Sprintf("%s file for app in %s directory", *content.Name, id),
+						What: fmt.Sprintf("%s file for app in `%s` directory", *content.Name, id),
 						Why: "author field not in format \"NAME <EMAIL>\"",
 						FixInstructions: "make field conform to specified format",
 						InternalError: nil,
@@ -203,7 +203,7 @@ func (p RepoParser) GetApp(id string) (*models.App, *ParseError) {
 
 				if !models.ContactStrExp.Match([]byte(manifest.Maintainer)) {
 					return nil, &ParseError{
-						What: fmt.Sprintf("%s file for app in %s directory", *content.Name, id),
+						What: fmt.Sprintf("%s file for app in `%s` directory", *content.Name, id),
 						Why: "maintainer field not in format \"NAME <EMAIL>\"",
 						FixInstructions: "make field conform to specified format",
 						InternalError: nil,
@@ -231,7 +231,7 @@ func (p RepoParser) GetApp(id string) (*models.App, *ParseError) {
 				txt, err := p.GetFileContent(fmt.Sprintf("%s/%s", id, *content.Name))
 				if err != nil {
 					return nil, &ParseError{
-						What: fmt.Sprintf("%s file for app in %s directory", *content.Name, id),
+						What: fmt.Sprintf("`%s` file for app in `%s` directory", *content.Name, id),
 						Why: "failed to get contents of file from the GitHub API, an error response was returned",
 						FixInstructions: fmt.Sprintf("%s will triage this issue", p.GHDevTeamName),
 						InternalError: err,
@@ -240,7 +240,7 @@ func (p RepoParser) GetApp(id string) (*models.App, *ParseError) {
 
 				if len(txt) == 0 {
 					return nil, &ParseError{
-						What: fmt.Sprintf("%s file for app in %s directory", *content.Name, id),
+						What: fmt.Sprintf("`%s` file for app in `%s` directory", *content.Name, id),
 						Why: "file is empty",
 						FixInstructions: "add content to file",
 						InternalError: nil,
@@ -258,7 +258,7 @@ func (p RepoParser) GetApp(id string) (*models.App, *ParseError) {
 				urls, err := p.GetDownloadURLs(fmt.Sprintf("%s/screenshots", id))
 				if err != nil {
 					return nil, &ParseError{
-						What: fmt.Sprintf("%s directory for app in %s directory", *content.Name, id),
+						What: fmt.Sprintf("`%s` directory for app in `%s` directory", *content.Name, id),
 						Why: "failed to get files in directory from GitHub API, an error response was returned",
 						FixInstructions: fmt.Sprintf("%s will triage this issue", p.GHDevTeamName),
 						InternalError: err,
@@ -272,7 +272,7 @@ func (p RepoParser) GetApp(id string) (*models.App, *ParseError) {
 				urls, err := p.GetDownloadURLs(fmt.Sprintf("%s/deployment", id))
 				if err != nil {
 					return nil, &ParseError{
-						What: fmt.Sprintf("%s directory for app in %s directory", *content.Name, id),
+						What: fmt.Sprintf("`%s` directory for app in `%s` directory", *content.Name, id),
 						Why: "failed to get files in directory from GitHub API, an error response was returned",
 						FixInstructions: fmt.Sprintf("%s will triage this issue", p.GHDevTeamName),
 						InternalError: err,
@@ -288,7 +288,7 @@ func (p RepoParser) GetApp(id string) (*models.App, *ParseError) {
 	asJSON, err := json.Marshal(app)
 	if err != nil {
 		return nil, &ParseError{
-			What: fmt.Sprintf("app in %s directory", id),
+			What: fmt.Sprintf("app in `%s` directory", id),
 			Why: "error when creating app version hash",
 			FixInstructions: fmt.Sprintf("%s will triage this issue", p.GHDevTeamName),
 			InternalError: err,
@@ -300,12 +300,111 @@ func (p RepoParser) GetApp(id string) (*models.App, *ParseError) {
 	// {{{1 Validate app
 	validate := validator.New()
 	err = validate.Struct(app)
+	
 	if err != nil {
-		return nil, &ParseError{
-			What: fmt.Sprintf("app in %s directory", id),
-			Why: fmt.Sprintf("the information gathered about the app is not valid: %s", err.Error()),
-			FixInstructions: "fix validation error",
-			InternalError: nil,
+		// {{{2 If error is a validation error
+		if vErr, ok := err.(validator.ValidationErrors); ok {
+			// whatMap keys are models.App field names, values are the files
+			// which these keys get their values in the github repository
+			whatMap := map[string]string{
+				"name": "`manifest.yaml` file",
+				"tagline": "`manifest.yaml` file",
+				"tags": "`manifest.yaml` file",
+				"categories": "`manifest.yaml` file",
+				"author": "`manifest.yaml` file",
+				"maintainer": "`manifest.yaml` file",
+				"description": "`README.md` file",
+				"logo_url": "`logo.png` file",
+				"screenshot_urls": "`screenshots` directory",
+				"deployment_file_urls": "`deployment` directory",
+			}
+
+			// metaParseErrs will hold a ParseError for each field in
+			// the models.App which has an error. If the ParseError.What
+			// field is empty in any of the items this indicates it was an error
+			// with the parsing process itself.
+			metaParseErrs := []ParseError{}
+
+			// {{{3 Build ParseError for each validation error
+			for _, fieldErr := range vErr {
+				parseErr := ParseError{}
+				
+				// {{{3 Determine which PR file is responsible for field
+				// If field in whatMap then the validation error involves a user specified value
+				if prFile, ok := whatMap[fieldErr.Field()]; ok {
+					parseErr.What = prFile
+
+					switch fieldErr.Tag() {
+					case "required":
+						parseErr.Why = "value is required"
+						parseErr.FixInstructions = "add value"
+					case "lowercase":
+						parseErr.Why = "internal error, server failed to "+
+							"pre-process value correctly"
+						parseErr.FixInstructions = fmt.Sprintf("%s will triage this issue", p.GHDevTeamName)
+						parseErr.InternalError = fmt.Errorf("server did not lowercase %s field values", fieldErr.Field())
+					case "contact_info":
+						parseErr.Why = fmt.Sprintf("%s field is not in format field not in format \"NAME <EMAIL>\"",
+							fieldErr.Field())
+						parseErr.FixInstructions = "make field conform to specified format"
+					default:
+						parseErr.Why = "unknown internal server error"
+						parseErr.FixInstructions = fmt.Sprintf("%s will triage this issue", p.GHDevTeamName)
+						parseErr.InternalError = fmt.Errorf("unexpected validation tag \"%s\" failed on field \"%s\"",
+							fieldErr.Tag(), fieldErr.Field())
+					}
+				} else {
+					parseErr.What = fmt.Sprintf("`%s` field in app data", fieldErr.Field())
+					parseErr.Why = fmt.Sprintf("failed \"%s\" validation", fieldErr.Tag())
+					parseErr.FixInstructions = fmt.Sprintf("%s will triage this issue", p.GHDevTeamName)
+					parseErr.InternalError = fmt.Errorf("a computed field \"%s\" which the user does not enter information for "+
+						"failed a validation \"%s\"", fieldErr.Field(), fieldErr.Tag())
+				}
+
+				metaParseErrs = append(metaParseErrs, parseErr)
+			}
+
+			// {{{3 Combine all field errors into one
+			if len(metaParseErrs) == 1 {
+				return nil, &ParseError{
+					What: fmt.Sprintf("%s for app in the `%s` directory", metaParseErrs[0].What, id),
+					Why: metaParseErrs[0].Why,
+					FixInstructions: metaParseErrs[0].FixInstructions,
+					InternalError: metaParseErrs[0].InternalError,
+				}
+			} else {
+				parseErr := ParseError{}
+				
+				// {{{4 Combine all whats
+				parseErr.What = fmt.Sprintf("multiple items related to an app in the `%s` directory  \n\n", id)
+				parseErr.Why = "reason for each item listed below:  \n\n"
+				parseErr.FixInstructions = "fix instructions for each item listed below:  \n\n"
+
+				internalErrs := []string{}
+
+				for _, metaParseErr := range metaParseErrs {
+					parseErr.What += fmt.Sprintf("- %s\n", metaParseErr.What)
+					parseErr.Why += fmt.Sprintf("- %s: %s\n", metaParseErr.What, metaParseErr.Why)
+					parseErr.FixInstructions += fmt.Sprintf("- %s: %s\n", metaParseErr.What, metaParseErr.FixInstructions)
+
+					if metaParseErr.InternalError != nil {
+						internalErrs = append(internalErrs, metaParseErr.InternalError.Error())
+					}
+				}
+
+				if len(internalErrs) > 0 {
+					parseErr.InternalError = fmt.Errorf("multiple errors: %s", strings.Join(internalErrs, ", "))
+				}
+
+				return nil, &parseErr
+			}
+		} else {
+			return nil, &ParseError{
+				What: fmt.Sprintf("app in `%s` directory", id),
+				Why: fmt.Sprintf("the app could not be validated: %s", err.Error()),
+				FixInstructions: fmt.Sprintf("%s will triage this issue", p.GHDevTeamName),
+				InternalError: err,
+			}
 		}
 	}
 
