@@ -37,8 +37,8 @@ make db
 ## Configuration
 Configuration is passed via environment variables.  
 
-Most configuration fields have default values which will work local development.
-However a few fields must be set:
+Most configuration fields have default values which will work for local 
+development. However a few fields must be set:
 
 - `APP_GH_INTEGRATION_ID` (Integer): ID of GitHub APP, find in
   GitHub.com > Settings > Developer setting > GitHub Apps > YOUR GITHUB APP >
