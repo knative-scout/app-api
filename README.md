@@ -4,7 +4,15 @@ API which curates serverless applications.
 # Table Of Contents
 - [Overview](#overview)
 - [Development](#development)
+  - [Database](#database)
+  - [Configuration](#configuration)
+  - [Run](#run)
+  - [Advanced Run](#advanced-run)
 - [Deployment](#deployment)
+  - [GitHub App](#github-app)
+  - [Secrets](#secrets)
+  - [Deploy](#deploy)
+  - [Staging Deployment](#staging-deployment)
 
 # Overview
 See [DESIGN.md](DESIGN.md)
@@ -29,18 +37,20 @@ make db
 ## Configuration
 Configuration is passed via environment variables.  
 
-Most configuration fields have default values which will work local development.
-However a few fields must be set:
+Most configuration fields have default values which will work for local 
+development. However a few fields must be set:
 
-- `APP_GH_INTEGRATION_ID` (Integer): ID of GitHub APP, find in
-  GitHub.com > Settings > Developer setting > GitHub Apps > YOUR GITHUB APP >
-  General > About > App ID
-- `APP_GH_INSTALLATION_ID` (Integer): Installation ID of GitHub APP, find in
-  GitHub.com > Settings> Developer settings > GitHub Apps > YOUR GITHUB APP >
-  Advanced > Recent Deliveries > CLICK ON ANY OF THE ITEMS > Request > Payload >
-  `installation.id` field
+- `APP_GH_INTEGRATION_ID` (Integer): ID of GitHub App
+  - Find by going to: 
+	[KScout Org. GitHub Apps](https://github.com/organizations/kscout/settings/apps) >
+	YOUR GITHUB APP > General > About > App ID
+- `APP_GH_INSTALLATION_ID` (Integer): Installation ID of GitHub APP
+  - Find by going to:
+	[KScout Org. GitHub Apps](https://github.com/organizations/kscout/settings/apps) >
+	YOUR GITHUB APP > Advanced > Recent Deliveries > CLICK ON ANY OF THE ITEMS >
+	Request > Payload > `installation.id` field
 - `APP_GH_WEBHOOK_SECRET` (String): Secret value which was provided during the
-  [GitHub registry repository Webhook](#webhook) creation
+  [GitHub App creation](#github-app)
   
 You must also obtain the "KScout Staging" GitHub App private key. Send a message
 to the Slack channel asking for this file. Then place it in the root of 
@@ -69,12 +79,25 @@ Start the server by running:
 go run .
 ```
 
-Additionally you can force the server to rebuild the database state from the 
-GitHub registry repository and exit by passing the `-update-apps` flag:
+## Advanced Run
+### Update Apps
+Force the server to rebuild its database state by passing the 
+`-update-apps` flag:
 
 ```
 go run . -update-apps
 ```
+
+This makes the server import data from the serverless registry repository.
+
+### Seed Data
+Insert seed data into the database by passing the `-seed` flag:
+
+```
+go run . -seed
+```
+
+This will load the JSON files in the `./seed-data` directory into the database.
 
 # Deployment
 Deployments are created for **environments**.  

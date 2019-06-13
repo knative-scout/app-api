@@ -1,0 +1,23 @@
+{
+    "name": "Serverless Example Quarkus",
+    "tagline": "Hello world Quarkus application",
+    "tags": [
+	"java",
+	"quarkus"
+    ],
+    "categories": [
+	"examples"
+    ],
+    "app_id": "serverless-example-quarkus",
+    "description": "# Serverless Example Quarkus\nHello world.",
+    "screenshot_urls": null,
+    "logo_url": "https://example.com/does-not-exist.png",
+    "github_url": "https://github.com/kscout/serverless-apps/serverless-example-quarkus",
+    "deployment_file_urls": [
+	"https://example.com/does-not-exist.yaml"
+    ],
+    "author": "Noah Huppert <nhuppert@redhat.com>",
+    "maintainer": "Noah Huppert <nhuppert@redhat.com>",
+    "version": "abcdefg",
+    "verification_status": "pending"
+}

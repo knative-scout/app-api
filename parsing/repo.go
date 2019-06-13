@@ -8,10 +8,10 @@ import (
 	"crypto/sha256"
 
 	"github.com/kscout/serverless-registry-api/models"
+	"github.com/kscout/serverless-registry-api/validation"
 	
 	"github.com/google/go-github/v26/github"
 	"gopkg.in/yaml.v2"
-	"gopkg.in/go-playground/validator.v9"
 )
 
 // RepoParser reads GitHub repositories for serverless application information
@@ -279,9 +279,8 @@ func (p RepoParser) GetApp(id string) (*models.App, *ParseError) {
 	app.Version = fmt.Sprintf("%x", sha256.Sum256([]byte(asJSON)))
 
 	// {{{1 Validate app
-	validate := validator.New()
-	err = validate.Struct(app)
-	
+	err = validation.ValidateApp(app)
+
 	if err != nil {
 		// {{{2 If error is a validation error
 		if vErr, ok := err.(validator.ValidationErrors); ok {
