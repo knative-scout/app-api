@@ -86,31 +86,17 @@ func main() {
 
 	logger.Debug("connected to Db")
 
-	// {{{2 Add indexes if none found
+	// {{{2 Ensure database indexes exist
 	mDbAppsIndexes := mDbApps.Indexes()
 	
-	indexesCur, err := mDbAppsIndexes.List(ctx, nil)
+	_, err := mDbAppsIndexes.CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{{"$**", "text"}},
+	})
 	if err != nil {
-		logger.Fatalf("failed to list db indexes: %s", err.Error())
+		logger.Fatalf("failed to create db index: %s", err.Error())
 	}
 
-	indexCount := 0
-	for indexesCur.Next(ctx) {
-		indexCount++
-	}
-
-	if indexCount == 1 {
-		_, err := mDbAppsIndexes.CreateOne(ctx, mongo.IndexModel{
-			Keys: bson.D{{"$**", "text"}},
-		})
-		if err != nil {
-			logger.Fatalf("failed to create db index: %s", err.Error())
-		}
-
-		logger.Debug("created db indexes")
-	} else {
-		logger.Debugf("db already has %d indexes", indexCount)
-	}
+	logger.Debugf("ensured db indexes exist")
 
 	// {{{1 GitHub
 	// {{{2 Create client
