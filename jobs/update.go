@@ -73,7 +73,13 @@ func (j UpdateAppsJob) Do(data []byte) error {
 	}
 
 	// {{{1 Delete any old apps
-	_, err = j.MDbApps.DeleteMany(j.Ctx, bson.D{{"app_id", bson.E{"$nin", appIDs}}}, nil)
+	_, err = j.MDbApps.DeleteMany(j.Ctx, bson.D{{
+		"app_id",
+		bson.D{{
+			"$nin",
+			appIDs,
+		}},
+	}}, nil)
 	if err != nil {
 		return fmt.Errorf("failed to prune old apps from db: %s", err.Error())
 	}

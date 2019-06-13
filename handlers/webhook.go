@@ -80,8 +80,27 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				err.Error()))
 		}
 
-		// {{{2 Start update job if PR was just merged
-		if *event.Action == "closed" && *event.PullRequest.Merged {
+		h.Logger.Debugf("received pull request event: %#v", event)
+
+		// {{{2 Start job if PR was just opened or just merged
+		if *event.Action == "opened" {
+			h.Logger.Debugf("started validate job for PR #%d",
+				*event.PullRequest.Number)
+			
+			// {{{3 Marshal PR back to bytes
+			prBytes, err := json.Marshal(*event.PullRequest)
+			if err != nil {
+				panic(fmt.Errorf("failed to marshal PR into JSON: %s",
+					err.Error()))
+			}
+			h.JobRunner.Submit(jobs.JobStartRequest{
+				Type: jobs.JobTypeValidate,
+				Data: prBytes,
+			})
+		} else if *event.Action == "closed" && *event.PullRequest.Merged { 
+			h.Logger.Debugf("PR #%d was merged, submited update apps job",
+				*event.PullRequest.Number)
+			
 			h.JobRunner.Submit(jobs.JobStartRequest{
 				Type: jobs.JobTypeUpdateApps,
 			})
@@ -95,9 +114,38 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				err.Error()))
 		}
 
+		h.Logger.Debugf("received check suite event: %#v", event)
+
 		// {{{2 Start job for each pull request
 		checkSuite := *event.CheckSuite
+		prs := []*github.PullRequest{}
+
 		for _, pr := range checkSuite.PullRequests {
+			prs = append(prs, pr)
+		}
+
+		// {{{3 If no PRs in webhook then use head SHA
+		if len(prs) == 0 {
+			searchedPRs, _, err := h.Gh.PullRequests.ListPullRequestsWithCommit(h.Ctx,
+				h.Cfg.GhRegistryRepoOwner, h.Cfg.GhRegistryRepoName,
+				*checkSuite.HeadSHA, &github.PullRequestListOptions{
+					State: "open",
+				})
+			if err != nil {
+				panic(fmt.Errorf("failed to get PRs for check suite head SHA: %s",
+					err.Error()))
+			}
+
+			for _, pr := range searchedPRs {
+				prs = append(prs, pr)
+			}
+			
+		}
+
+		// {{{3 Submit validate job for each PR
+		for _, pr := range prs {
+			h.Logger.Debugf("submited validate job for PR #%d", *pr.Number)
+			
 			// {{{3 Marshal PR back to bytes
 			prBytes, err := json.Marshal(*pr)
 			if err != nil {

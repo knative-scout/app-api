@@ -12,6 +12,10 @@ See [DESIGN.md](DESIGN.md)
 # Development
 The API server can be run locally.  
 
+A GitHub App is required to interact with the GitHub API.  
+The KScout GitHub organization owns an app named "KScout Staging", use this for 
+local development.
+
 Follow the steps in the [Database](#database), [Configuration](#configuration),
 and [Run](#run) sections.
 
@@ -23,10 +27,27 @@ make db
 ```
 
 ## Configuration
-For local development the default configuration values will suffice with the 
-exception of `APP_GH_TOKEN` and `APP_GH_WEBHOOK_SECRET`. 
+Configuration is passed via environment variables.  
 
-Configuration is passed via environment variables.
+Most configuration fields have default values which will work local development.
+However a few fields must be set:
+
+- `APP_GH_INTEGRATION_ID` (Integer): ID of GitHub APP, find in
+  GitHub.com > Settings > Developer setting > GitHub Apps > YOUR GITHUB APP >
+  General > About > App ID
+- `APP_GH_INSTALLATION_ID` (Integer): Installation ID of GitHub APP, find in
+  GitHub.com > Settings> Developer settings > GitHub Apps > YOUR GITHUB APP >
+  Advanced > Recent Deliveries > CLICK ON ANY OF THE ITEMS > Request > Payload >
+  `installation.id` field
+- `APP_GH_WEBHOOK_SECRET` (String): Secret value which was provided during the
+  [GitHub registry repository Webhook](#webhook) creation
+  
+You must also obtain the "KScout Staging" GitHub App private key. Send a message
+to the Slack channel asking for this file. Then place it in the root of 
+this repository.
+
+You do not have to change any of the other configuration fields. Documentation 
+for these fields follows:
 
 - `APP_HTTP_ADDR` (String): Address to bind server, defaults to `:5000`
 - `APP_DB_HOST` (String): MongoDB host, defaults to `localhost`
@@ -36,19 +57,10 @@ Configuration is passed via environment variables.
 - `APP_DB_NAME` (String): MongoDB database name, defaults
   to `kscout-serverless-registry-api-dev`
 - `APP_GH_PRIVATE_KEY_PATH` (String): Path to GitHub App's private key
-- `APP_GH_INTEGRATION_ID` (Integer): ID of GitHub APP, find in
-  GitHub.com > Settings > Developer setting > GitHub Apps > YOUR GITHUB APP >
-  General > About > App ID
-- `APP_GH_INSTALLATION_ID` (Integer): Installation ID of GitHub APP, find in
-  GitHub.com > Settings> Developer settings > GitHub Apps > YOUR GITHUB APP >
-  Advanced > Recent Deliveries > CLICK ON ANY OF THE ITEMS > Request > Payload >
-  `installation.id` field
 - `APP_GH_REGISTRY_REPO_OWNER` (String): Owner of serverless application
   registry repository, defaults to `kscout`
 - `APP_GH_REGISTRY_REPO_NAME` (String): Name of serverless application
   registry repository, defaults to `serverless-apps`
-- `APP_GH_WEBHOOK_SECRET` (String): Secret value which was provided during the
-  [GitHub registry repository Webhook](#webhook) creation
 
 ## Run
 Start the server by running:
@@ -110,6 +122,8 @@ Create a JSON / YAML / TOML file with the following structure:
 - `mongo` (Object): Secrets for Mongo database
   - `password` (String): Password to be used when creating account for API
 - `github` (Object): GitHub secrets
+  - `installationID` (Integer): GitHub App ID
+  - `integrationID` (Integer): GitHub installation ID
   - `privateKey` (String): GitHub App private key
   - `webhookSecret` (String): Secret used by GitHub to sign HMACs for requests
 	made to the API webhook endpoint
