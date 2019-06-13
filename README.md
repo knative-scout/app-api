@@ -40,7 +40,7 @@ Configuration is passed via environment variables.
 Most configuration fields have default values which will work for local 
 development. However a few fields must be set:
 
-- `APP_GH_INTEGRATION_ID` (Integer): ID of GitHub APP, find in
+- `APP_GH_INTEGRATION_ID` (Integer): ID of GitHub App, find in
   GitHub.com > Settings > Developer setting > GitHub Apps > YOUR GITHUB APP >
   General > About > App ID
 - `APP_GH_INSTALLATION_ID` (Integer): Installation ID of GitHub APP, find in
