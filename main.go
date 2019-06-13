@@ -189,9 +189,7 @@ func main() {
 		// {{{1 Load all apps if empty
 		loadLogger.Debugf("no apps found, will load apps into database")
 		
-		jobRunner.Submit(jobs.JobStartRequest{
-			Type: jobs.JobTypeUpdateApps,
-		})
+		jobRunner.Submit(jobs.JobTypeUpdateApps, nil)
 	}()
 
 	// {{{1 Router

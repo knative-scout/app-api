@@ -93,17 +93,12 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				panic(fmt.Errorf("failed to marshal PR into JSON: %s",
 					err.Error()))
 			}
-			h.JobRunner.Submit(jobs.JobStartRequest{
-				Type: jobs.JobTypeValidate,
-				Data: prBytes,
-			})
+			h.JobRunner.Submit(jobs.JobTypeValidate, prBytes)
 		} else if *event.Action == "closed" && *event.PullRequest.Merged { 
 			h.Logger.Debugf("PR #%d was merged, submited update apps job",
 				*event.PullRequest.Number)
 			
-			h.JobRunner.Submit(jobs.JobStartRequest{
-				Type: jobs.JobTypeUpdateApps,
-			})
+			h.JobRunner.Submit(jobs.JobTypeUpdateApps, nil)
 		}
 	case "check_suite":
 		// {{{2 Parse as CheckSuiteEvent so we can extract pull requests
@@ -152,10 +147,7 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				panic(fmt.Errorf("failed to marshal PR into JSON: %s",
 					err.Error()))
 			}
-			h.JobRunner.Submit(jobs.JobStartRequest{
-				Type: jobs.JobTypeValidate,
-				Data: prBytes,
-			})
+			h.JobRunner.Submit(jobs.JobTypeValidate, prBytes)
 		}
 	default:
 		h.RespondJSON(w, http.StatusNotAcceptable, map[string]string{
