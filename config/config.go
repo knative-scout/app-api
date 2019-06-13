@@ -27,8 +27,14 @@ type Config struct {
 	// DbName is the database to connect to inside MongoDB
 	DbName string `default:"kscout-serverless-registry-api-dev" split_words:"true" required:"true"`
 
-	// GhToken is a GitHub API token with repository read permissions
-	GhToken string `split_words:"true" required:"true"`
+	// GhPrivateKeyPath is the path to the GitHub app's secret key
+	GhPrivateKeyPath string `default:"gh.private-key.pem" split_words:"true" required:"true"`
+
+	// GhIntegrationID is the Scout Bot GitHub App ID
+	GhIntegrationID int `split_words:"true" required:"true"`
+
+	// GhInstallationID is an ID sent in the Scout Bot GitHub App webhook
+	GhInstallationID int `split_words:"true" required:"true"`
 
 	// GhRegistryRepoOwner is the GitHub user / organization which owns the serverless
 	// application registry repository.
@@ -63,10 +69,6 @@ func NewConfig() (*Config, error) {
 func (c Config) String() (string, error) {
 	if c.DbPassword != "" {
 		c.DbPassword = "REDACTED_NOT_EMPTY"
-	}
-
-	if c.GhToken != "" {
-		c.GhToken = "REDACTED_NOT_EMPTY"
 	}
 
 	if c.GhWebhookSecret != "" {

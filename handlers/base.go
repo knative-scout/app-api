@@ -10,7 +10,7 @@ import (
 
 	"github.com/Noah-Huppert/golog"
 	"go.mongodb.org/mongo-driver/mongo"
-	"github.com/google/go-github/v25/github"
+	"github.com/google/go-github/v26/github"
 )
 
 // BaseHandler provides helper methods and commonly used variables for API endpoints to base

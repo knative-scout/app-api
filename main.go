@@ -9,15 +9,15 @@ import (
 
 	"github.com/kscout/serverless-registry-api/config"
 	"github.com/kscout/serverless-registry-api/handlers"
-	"github.com/kscout/serverless-registry-api/models"
+	"github.com/kscout/serverless-registry-api/jobs"
 
 	"github.com/Noah-Huppert/golog"
-	"github.com/google/go-github/v25/github"
+	"github.com/google/go-github/v26/github"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"golang.org/x/oauth2"
+	"github.com/bradleyfalzon/ghinstallation"
 )
 
 func main() {
@@ -86,16 +86,43 @@ func main() {
 
 	logger.Debug("connected to Db")
 
+	// {{{2 Add indexes if none found
+	mDbAppsIndexes := mDbApps.Indexes()
+	
+	indexesCur, err := mDbAppsIndexes.List(ctx, nil)
+	if err != nil {
+		logger.Fatalf("failed to list db indexes: %s", err.Error())
+	}
+
+	indexCount := 0
+	for indexesCur.Next(ctx) {
+		indexCount++
+	}
+
+	if indexCount == 1 {
+		_, err := mDbAppsIndexes.CreateOne(ctx, mongo.IndexModel{
+			Keys: bson.D{{"$**", "text"}},
+		})
+		if err != nil {
+			logger.Fatalf("failed to create db index: %s", err.Error())
+		}
+
+		logger.Debug("created db indexes")
+	} else {
+		logger.Debugf("db already has %d indexes", indexCount)
+	}
+
 	// {{{1 GitHub
 	// {{{2 Create client
 	logger.Debug("authenticating with GitHub API")
 
-	ghTokenSrc := oauth2.StaticTokenSource(&oauth2.Token{
-		AccessToken: cfg.GhToken,
-	})
-	ghTokenClient := oauth2.NewClient(ctx, ghTokenSrc)
+	ghAPIKeyTransport, err := ghinstallation.NewKeyFromFile(http.DefaultTransport,
+		cfg.GhIntegrationID, cfg.GhInstallationID, cfg.GhPrivateKeyPath)
+	if err != nil {
+		logger.Fatalf("failed to load GitHub API secret key file: %s", err.Error())
+	}
 
-	gh := github.NewClient(ghTokenClient)
+	gh := github.NewClient(&http.Client{Transport: ghAPIKeyTransport})
 
 	// {{{2 Ensure registry repository exists
 	_, _, err = gh.Repositories.Get(ctx, cfg.GhRegistryRepoOwner,
@@ -107,11 +134,44 @@ func main() {
 
 	logger.Debug("authenticated with GitHub API")
 
-	// {{{1 Load serverless application registry repository state if database is empty
+	// {{{1 Setup component shutdown bus
+	// targetShutdownBusCount is the number of messages which must be received on
+	// shutdownBus before the process will exit gracefully
+	targetShutdownBusCount := 2
+	
+	// shutdownBus receives a message with a component's name when a component shuts down.
+	// This lets the process wait until all of its components have been shut down gracefully
+	// before exiting.
+	//
+	// Currently the process has the following components:
+	//
+	//    - (job-runner): Job runner
+	//    - (http-api) HTTP API server
+	// 
+	// The end of the program will wait for targetShutdownBusCount number of messages to
+	// be sent over this bus before exiting. Each of the components above should send a
+	// message on the bus when they are done.
+	shutdownBus := make(chan string, targetShutdownBusCount)
+
+	// {{{1 Pull request evalator
+	jobRunner := &jobs.JobRunner{
+		Ctx: ctx,
+		Logger: logger.GetChild("job-runner"),
+		Cfg: cfg,
+		GH: gh,
+		MDbApps: mDbApps,
+	}
+	jobRunner.Init()
+
+	go func() {
+		jobRunner.Run()
+
+		shutdownBus <- "job-runner"
+	}()
+
+	// {{{1 Load applications from database if none exist yet
 	go func() {
 		loadLogger := logger.GetChild("populate-apps-db")
-
-		loadLogger.Debug("checking if Db must be populated from GitHub registry repository")
 
 		// {{{1 Check if empty
 		docCount, err := mDbApps.CountDocuments(ctx, bson.D{{}}, nil)
@@ -127,30 +187,11 @@ func main() {
 		}
 
 		// {{{1 Load all apps if empty
-		appLoader := models.AppLoader{
-			Ctx: ctx,
-			Gh:  gh,
-			Cfg: cfg,
-		}
-
-		apps, err := appLoader.LoadAllAppsFromRegistry("")
-		if err != nil {
-			loadLogger.Fatalf("failed to load apps: %s", err.Error())
-		}
-
-		// {{{1 Insert
-		insertDocs := []interface{}{}
-
-		for _, app := range apps {
-			insertDocs = append(insertDocs, *app)
-		}
-
-		_, err = mDbApps.InsertMany(ctx, insertDocs, nil)
-		if err != nil {
-			loadLogger.Fatalf("failed to insert apps into db: %s", err.Error())
-		}
-
-		loadLogger.Debugf("loaded %d app(s) into database", len(apps))
+		loadLogger.Debugf("no apps found, will load apps into database")
+		
+		jobRunner.Submit(jobs.JobStartRequest{
+			Type: jobs.JobTypeUpdateApps,
+		})
 	}()
 
 	// {{{1 Router
@@ -187,7 +228,8 @@ func main() {
 	}).Methods("GET")
 
 	router.Handle("/apps/webhook", handlers.WebhookHandler{
-		baseHandler.GetChild("webhook"),
+		BaseHandler: baseHandler.GetChild("webhook"),
+		JobRunner: jobRunner,
 	}).Methods("POST")
 
 	router.Handle("/nsearch", handlers.SmartSearchHandler{
@@ -220,14 +262,30 @@ func main() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Fatalf("failed to serve: %s", err.Error())
 		}
+
+		shutdownBus <- "http-api"
 	}()
 
 	logger.Infof("started server on %s", cfg.HTTPAddr)
 
+	// {{{1 Wait for all components to shut down
 	<-ctx.Done()
 
-	if err := server.Shutdown(context.Background()); err != nil {
-		logger.Fatalf("failed to shutdown server: %s", err.Error())
+	logger.Infof("shutting down %d components", targetShutdownBusCount)
+
+	go func() {
+		if err := server.Shutdown(context.Background()); err != nil {
+			logger.Fatalf("failed to shutdown server: %s",
+				err.Error())
+		}
+	}()
+	
+	shutdownBusRecvCount := 0
+
+	for shutdownBusRecvCount < targetShutdownBusCount {
+		name := <-shutdownBus
+		shutdownBusRecvCount++
+		logger.Infof("%s component shut down (%d/%d)", name, shutdownBusRecvCount, targetShutdownBusCount)
 	}
 
 	logger.Info("done")

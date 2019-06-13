@@ -35,7 +35,14 @@ Configuration is passed via environment variables.
 - `APP_DB_PASSWORD` (String): MongoDB password, defaults to `secretpassword`
 - `APP_DB_NAME` (String): MongoDB database name, defaults
   to `kscout-serverless-registry-api-dev`
-- `APP_GH_TOKEN` (String): GitHub API token with repository read permissions
+- `APP_GH_PRIVATE_KEY_PATH` (String): Path to GitHub App's private key
+- `APP_GH_INTEGRATION_ID` (Integer): ID of GitHub APP, find in
+  GitHub.com > Settings > Developer setting > GitHub Apps > YOUR GITHUB APP >
+  General > About > App ID
+- `APP_GH_INSTALLATION_ID` (Integer): Installation ID of GitHub APP, find in
+  GitHub.com > Settings> Developer settings > GitHub Apps > YOUR GITHUB APP >
+  Advanced > Recent Deliveries > CLICK ON ANY OF THE ITEMS > Request > Payload >
+  `installation.id` field
 - `APP_GH_REGISTRY_REPO_OWNER` (String): Owner of serverless application
   registry repository, defaults to `kscout`
 - `APP_GH_REGISTRY_REPO_NAME` (String): Name of serverless application
@@ -60,28 +67,40 @@ The production (or "prod") environment holds the most stable code.
 The staging environment can hold less stable code, or code who's stability is 
 not yet known.
 
-## GitHub
-### Webhook
-A webhook should exist for the
-[app-repository](https://github.com/kscout/app-repository/settings/hooks/new).  
+## GitHub App
+### Create
+Create a GitHub App with the following parameters:
 
-Use a randomly generated string for the "Secret".  
+- **Name**: `KScout`
+- **Description**: `Smart App Hub for Serverless Knative Apps by Red Hat.`
+- **Homepage URL**: `https://kscout.io`
+- **User authorization callback URL**: `https://api.kscout.io/auth/github_app/callback`
+- **Webhook URL**: `https://api.kscout.io/apps/webhook`
+- **Webhook secret**: A secret random string
+- **Permissions**:
+  - *Checks*: Read & write
+  - *Repository contents*: Read-only
+  - *Pull requests*: Read & write
+- **Subscribe to events**:
+  - *Check run*
+  - *Pull request*
 
-Select "Let me select individual events" and then "Pull requests" for the events
-which should trigger the webhook.
+### Set Logo
+Once created set the logo to 
+[`logo.png` from the meta repository](https://github.com/kscout/meta/blob/master/logo.png).
 
-### API Token
-Generate an API token which has the following scopes:
+### Generate Private Key
+Go to the "private keys" section of the GitHub App settings page and 
+generate a private key.
 
-- `repo`
-  - `status`
-  - `repo_deployment`
-  - `public_repo`
-- `user`
-  - `read:user`
-  - `user:email`
-- `write:discussion`
-  - `read:discussion`
+### Install
+Navigate to the "Install App" tab in the left menu. Click the "Install" button 
+for the `kscout` organization.  
+
+On the next page select "Only select repositories" and 
+choose `kscout/serverless-apps`.
+
+Click "Install".
 
 ## Secrets
 Deployment secrets must be set for a deployment.  
@@ -91,7 +110,7 @@ Create a JSON / YAML / TOML file with the following structure:
 - `mongo` (Object): Secrets for Mongo database
   - `password` (String): Password to be used when creating account for API
 - `github` (Object): GitHub secrets
-  - `apiToken` (String): API token used to contact the GitHub API
+  - `privateKey` (String): GitHub App private key
   - `webhookSecret` (String): Secret used by GitHub to sign HMACs for requests
 	made to the API webhook endpoint
   
