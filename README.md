@@ -4,7 +4,15 @@ API which curates serverless applications.
 # Table Of Contents
 - [Overview](#overview)
 - [Development](#development)
+  - [Database](#database)
+  - [Configuration](#configuration)
+  - [Run](#run)
+  - [Advanced Run](#advanced-run)
 - [Deployment](#deployment)
+  - [GitHub App](#github-app)
+  - [Secrets](#secrets)
+  - [Deploy](#deploy)
+  - [Staging Deployment](#staging-deployment)
 
 # Overview
 See [DESIGN.md](DESIGN.md)
@@ -69,12 +77,25 @@ Start the server by running:
 go run .
 ```
 
-Additionally you can force the server to rebuild the database state from the 
-GitHub registry repository and exit by passing the `-update-apps` flag:
+## Advanced Run
+### Update Apps
+Force the server to rebuild its database state by passing the 
+`-update-apps` flag:
 
 ```
 go run . -update-apps
 ```
+
+This makes the server import data from the serverless registry repository.
+
+### Seed Data
+Insert seed data into the database by passing the `-seed` flag:
+
+```
+go run . -seed
+```
+
+This will load the JSON files in the `./seed-data` directory into the database.
 
 # Deployment
 Deployments are created for **environments**.  
