@@ -26,12 +26,16 @@ type JobStartRequest struct {
 
 	// Data required to start job
 	Data []byte
+
+	// CompleteChan will close when the job has been completed. This
+	// does not gaurentee the job finished successfully
+	CompleteChan chan interface{}
 }
 
 // JobRunner manages starting jobs and shutting down gracefully
 type JobRunner struct {
 	// queue is a channel to which requests to start jobs are sent
-	queue chan JobStartRequest
+	queue chan *JobStartRequest
 
 	// jobInstances holds jobs which can be run
 	jobInstances map[JobTypeT]Job
@@ -55,7 +59,7 @@ type JobRunner struct {
 // Init initializes a JobRunner. The Submit() and Run() methods will not work properly
 // unless this method is called.
 func (r *JobRunner) Init() {
-	r.queue = make(chan JobStartRequest)
+	r.queue = make(chan *JobStartRequest)
 
 	r.jobInstances = map[JobTypeT]Job{}
 	r.jobInstances[JobTypeUpdateApps] = UpdateAppsJob{
@@ -73,8 +77,16 @@ func (r *JobRunner) Init() {
 }
 
 // Submit new job
-func (r JobRunner) Submit(req JobStartRequest) {
-	r.queue <- req
+func (r JobRunner) Submit(t JobTypeT, data []byte) *JobStartRequest {
+	req := JobStartRequest{
+		Type: t,
+		Data: data,
+		CompleteChan: make(chan interface{}),
+	}
+	
+	r.queue <- &req
+
+	return &req
 }
 
 // Run reads requests off the Queue and starts go routines to run jobs
@@ -98,6 +110,7 @@ func (r JobRunner) Run() {
 					req.Type, err.Error())
 			}
 
+			close(req.CompleteChan)
 			r.Logger.Debugf("ran %s job", req.Type)
 		}
 	}

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"flag"
 
 	"github.com/kscout/serverless-registry-api/config"
 	"github.com/kscout/serverless-registry-api/handlers"
@@ -175,10 +176,28 @@ func main() {
 		// {{{1 Load all apps if empty
 		loadLogger.Debugf("no apps found, will load apps into database")
 		
-		jobRunner.Submit(jobs.JobStartRequest{
-			Type: jobs.JobTypeUpdateApps,
-		})
+		jobRunner.Submit(jobs.JobTypeUpdateApps, nil)
 	}()
+
+	// {{{1 Run quick script actions
+	// {{{2 Parse flags
+	// Flags can be provided which make the main.go file act more as a script.
+	// If a flag is provided the server will perform a specific action and then exit.
+
+	// doUpdateJob indicates if the server should submit an update job and then exit
+	var doUpdateJob bool
+
+	flag.BoolVar(&doUpdateJob, "update-apps", false,
+		"If provided server will run one update job and exit")
+	flag.Parse()
+
+	// {{{2 Do actions
+	if doUpdateJob {
+		logger.Info("running UpdateApps job and then exiting")
+		req := jobRunner.Submit(jobs.JobTypeUpdateApps, nil)
+		<-req.CompleteChan
+		ctxCancel()
+	}
 
 	// {{{1 Router
 	baseHandler := handlers.BaseHandler{
