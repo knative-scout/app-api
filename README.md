@@ -69,6 +69,13 @@ Start the server by running:
 go run .
 ```
 
+Additionally you can force the server to rebuild the database state from the 
+GitHub registry repository and exit by passing the `-update-apps` flag:
+
+```
+go run . -update-apps
+```
+
 # Deployment
 Deployments are created for **environments**.  
 
