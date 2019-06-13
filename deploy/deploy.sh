@@ -24,6 +24,8 @@
 #    - mongo (Object): MongoDB secrets
 #      - password (String): API user password
 #    - github (Object): GitHub secrets
+#      - `installationID` (Integer): GitHub App ID
+#      - `integrationID` (Integer): GitHub installation ID
 #      - privateKey (String): GitHub App private key
 #      - webhookSecret (String): Secret GitHub uses to sign an HMAC of requests sent
 #                                to the API webhook endpoint
