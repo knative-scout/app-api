@@ -40,15 +40,17 @@ Configuration is passed via environment variables.
 Most configuration fields have default values which will work for local 
 development. However a few fields must be set:
 
-- `APP_GH_INTEGRATION_ID` (Integer): ID of GitHub App, find in
-  GitHub.com > Settings > Developer setting > GitHub Apps > YOUR GITHUB APP >
-  General > About > App ID
-- `APP_GH_INSTALLATION_ID` (Integer): Installation ID of GitHub APP, find in
-  GitHub.com > Settings> Developer settings > GitHub Apps > YOUR GITHUB APP >
-  Advanced > Recent Deliveries > CLICK ON ANY OF THE ITEMS > Request > Payload >
-  `installation.id` field
+- `APP_GH_INTEGRATION_ID` (Integer): ID of GitHub App
+  - Find by going to: 
+	[KScout Org. GitHub Apps](https://github.com/organizations/kscout/settings/apps) >
+	YOUR GITHUB APP > General > About > App ID
+- `APP_GH_INSTALLATION_ID` (Integer): Installation ID of GitHub APP
+  - Find by going to:
+	[KScout Org. GitHub Apps](https://github.com/organizations/kscout/settings/apps) >
+	YOUR GITHUB APP > Advanced > Recent Deliveries > CLICK ON ANY OF THE ITEMS >
+	Request > Payload > `installation.id` field
 - `APP_GH_WEBHOOK_SECRET` (String): Secret value which was provided during the
-  [GitHub registry repository Webhook](#webhook) creation
+  [GitHub App creation](#github-app)
   
 You must also obtain the "KScout Staging" GitHub App private key. Send a message
 to the Slack channel asking for this file. Then place it in the root of 
