@@ -99,6 +99,19 @@ go run . -seed
 
 This will load the JSON files in the `./seed-data` directory into the database.
 
+### Validate Registry Repository Pull Request
+To run a validation job for a pull request in the [serverless application 
+registry repository](https://github.com/kscout/serverless-apps) pass the 
+`-validate-pr PR_NUM` flag:
+
+```
+go run . -validate-pr PR_NUM
+```
+
+This will ensure the applications modified by the PR are correctly formatted.  
+The job will set a check run status and make a comment on the PR based on the
+results of the format validation.
+
 # Deployment
 Deployments are created for **environments**.  
 

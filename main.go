@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strconv"
 	"context"
 	"fmt"
 	"net/http"
@@ -171,6 +172,10 @@ func main() {
 	// doSeed indicates that the server should import seed data into the datbase and exit
 	var doSeed bool
 
+	// doValidatePRNum indicates that the server should run a validate job for a PR with the
+	// specified num
+	var doValidatePRNum string
+
 	flag.BoolVar(&doUpdateJob, "update-apps", false,
 		"If provided server will run one update job and exit. Must be only "+
 			"flag provided.")
@@ -178,6 +183,9 @@ func main() {
 		"If provided server will import seed data from the ./seed-data folder. This "+
 			"folder should hold JSON files which contain 1 app each. Must be "+
 			"the only flag provided")
+	flag.StringVar(&doValidatePRNum, "validate-pr", "",
+		"If provided will run a validate job for the GitHub pull request with the "+
+			"provided number. Must be the only flag provided")
 	flag.Parse()
 
 	// {{{2 Do actions
@@ -243,6 +251,32 @@ func main() {
 		}
 
 		os.Exit(1)
+	} else if len(doValidatePRNum) > 0 {
+		logger.Infof("will launch validate job for PR #%s", doValidatePRNum)
+
+		// Convert pr number into integer
+		prNum, err := strconv.Atoi(doValidatePRNum)
+		if err != nil {
+			logger.Fatalf("failed to convert specified PR number string to int: %s",
+				err.Error())
+		}
+
+		// Get PR
+		pr, _, err := gh.PullRequests.Get(ctx, cfg.GhRegistryRepoOwner,
+			cfg.GhRegistryRepoName, prNum)
+		if err != nil {
+			logger.Fatalf("failed to get pull request with number %d: %s",
+				prNum, err.Error())
+		}
+
+		// Convert PR to bytes
+		prBytes, err := json.Marshal(pr)
+		if err != nil {
+			logger.Fatalf("failed to marshal PR into JSON: %s", err.Error())
+		}
+		req := jobRunner.Submit(jobs.JobTypeValidate, prBytes)
+		<-req.CompleteChan
+		os.Exit(0)
 	}
 
 	// {{{1 Load applications from database if none exist yet

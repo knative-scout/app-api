@@ -41,9 +41,10 @@ func (j ValidateJob) Do(data []byte) error {
 
 	// {{{1 Create check run
 	checkRunStatus :="in_progress"
+	checkRunName := "KScout Format Validation"
 	checkRun, _, err := j.GH.Checks.CreateCheckRun(j.Ctx, j.Cfg.GhRegistryRepoOwner,
 		j.Cfg.GhRegistryRepoName, github.CreateCheckRunOptions{
-			Name: "KScout Validation",
+			Name: checkRunName,
 			HeadBranch: *pr.Head.Ref,
 			HeadSHA: *pr.Head.SHA,
 			StartedAt: &github.Timestamp{ time.Now() },
@@ -81,12 +82,12 @@ func (j ValidateJob) Do(data []byte) error {
 		RepoRef: *pr.Head.Ref,
 	}
 
-        parseErrs := map[string]*parsing.ParseError{}
+        parseErrs := map[string][]parsing.ParseError{}
 
 	for _, appID := range appIDs {
-		_, err := repoParser.GetApp(appID)
-		if err != nil {
-			parseErrs[appID] = err
+		_, errs := repoParser.GetApp(appID)
+		if len(errs) > 0 {
+			parseErrs[appID] = errs
 		}
 	}
 
@@ -100,17 +101,26 @@ func (j ValidateJob) Do(data []byte) error {
 		"| App ID | Status | Comment |  \n"+
 		"| ------ | ------ | ------- |  \n"
 
+	internalErr := false
+	
 	for _, appID := range appIDs {
 		status := ""
 		comment := ""
 
-		if err, ok := parseErrs[appID]; ok {
-			if err.InternalError != nil {
+		if errs, ok := parseErrs[appID]; ok {
+			for _, err := range errs {
+				if err.InternalError != nil {
+					internalErr = true
+					break
+				}
+			}
+			
+			if internalErr {
 				status = "Internal error"
 				comment = fmt.Sprintf("%s please triage", j.Cfg.GhDevTeamName)
 			} else {
 				status = "Formatting error"
-				comment = "See error bellow"
+				comment = "See details bellow"
 			}
 		} else {
 			status = "Good"
@@ -130,18 +140,33 @@ func (j ValidateJob) Do(data []byte) error {
 	}
 
 	errsDetails := ""
-	for appID, err := range parseErrs {
+	for appID, errs := range parseErrs {
 		errsDetails += fmt.Sprintf("## App ID %s\n", appID)
 
-		if err.InternalError != nil {
-			errsDetails += "> Sometime went wrong on our servers when parsing this "+
-				"serverless application. The development team has been notified "+
-				"and will triage this issue as soon as they can.  \n"
+		if internalErr {
+			errsDetails += "> Sometime went wrong on our servers when "+
+				"parsing this serverless application. The development "+
+				"team has been notified and will triage this issue "+
+				"as soon as they can.  \n"
 		}
 
-		errsDetails += fmt.Sprintf("### What failed?\n%s  \n", err.What)
-		errsDetails += fmt.Sprintf("### Why did it fail?\n```\n%s\n```  \n", err.Why)
-		errsDetails += fmt.Sprintf("### How to fix it\n%s  \n", err.FixInstructions)
+		for i, err := range errs {
+			errsDetails += fmt.Sprintf("- Error %d\n", i+1)
+
+			errsDetails += fmt.Sprintf("  - **What failed?**: %s\n", err.What)
+			errsDetails += fmt.Sprintf("  - **Why did it fail?**: %s\n", err.Why)
+			errsDetails += "  - **How to fix**: "
+			
+			if err.InternalError != nil {
+				errsDetails += "This issue was caused by an error with the "+
+					"KScout servers. The development team will fix this "+
+					"error for you.\n"
+				j.Logger.Errorf("internal error when validating app \"%s\": %s",
+					appID, err.InternalError.Error())
+			} else {
+				errsDetails += fmt.Sprintf("%s\n", err.FixInstructions)
+			}
+		}
 	}
 
 	commentBody += errsDetails
@@ -168,19 +193,16 @@ func (j ValidateJob) Do(data []byte) error {
 		conclusion = "failure"
 	}
 
-	for _, err := range parseErrs {
-		if err.InternalError != nil {
-			title = "Internal Error"
-			conclusion = "cancelled"
-			break
-		}
+	if internalErr {
+		title = "Internal Error"
+		conclusion = "cancelled"
 	}
 
 	checkRunStatus = "completed"
 	
 	_, _, err = j.GH.Checks.UpdateCheckRun(j.Ctx, j.Cfg.GhRegistryRepoOwner,
 		j.Cfg.GhRegistryRepoName, *checkRun.ID, github.UpdateCheckRunOptions{
-			Name: "validate",
+			Name: checkRunName,
 			CompletedAt: &github.Timestamp{ time.Now() },
 			Status: &checkRunStatus,
 			Conclusion: &conclusion,
