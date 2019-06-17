@@ -10,7 +10,7 @@ API which curates serverless applications.
   - [Advanced Run](#advanced-run)
 - [Deployment](#deployment)
   - [GitHub App](#github-app)
-  - [deploy-Configuration](#deploy-configuration)
+  - [Configuration](#deploy-configuration)
   - [Deploy](#deploy)
   - [Staging Deployment](#staging-deployment)
 
