@@ -6,18 +6,25 @@ import (
 
 // ParseError provides details about a failure to parse an object. ParseErrors are meant to
 // be presented to users.
+// All string fields will be interpreted with Markdown formatting.
 type ParseError struct {
-	// What indicates the object that failed to be parsed
+	// What indicates the object that failed to be parsed.
+	// This field does not have to provide context about what is being parsed. Just
+	// what part of the parsing process failed.
 	What string
 
 	// Why indicates why the object failed to be parsed
 	Why string
 
 	// FixInstructions for the user to remedy this error
+	// Leave this field blank if there is nothing the user can do to fix the issue,
+	// ex., internal server error
 	FixInstructions string
 
 	// InternalError is a non user presentable error which will be logged for
-	// debug purposes. Can be nil if error is entirely user's fault.
+	// debug purposes. Can be nil if error is entirely caused by user's input.
+	// If not nil will be treated as if the server messed up in some way and
+	// the dev team will be notified.
 	InternalError error
 }
 

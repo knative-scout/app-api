@@ -3,6 +3,7 @@ package jobs
 import (
 	"fmt"
 	"context"
+	"strings"
 	
 	"github.com/kscout/serverless-registry-api/config"
 	"github.com/kscout/serverless-registry-api/parsing"
@@ -50,10 +51,14 @@ func (j UpdateAppsJob) Do(data []byte) error {
 	apps := map[string]models.App{}
 
 	for _, appID := range appIDs {
-		app, err := repoParser.GetApp(appID)
+		app, errs := repoParser.GetApp(appID)
 		if err != nil {
+			errStrs := []string{}
+			for _, err := range errs {
+				errStrs = append(errStrs, err.Error())
+			}
 			return fmt.Errorf("failed to get application with ID %s: %s",
-				appID, err.Error())
+				appID, strings.Join(errStrs, ", "))
 		}
 
 		apps[appID] = *app

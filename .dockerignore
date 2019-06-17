@@ -3,3 +3,5 @@ container-data
 Dockerfile
 deploy/
 .env
+*.private-key.pem
+secrets*
