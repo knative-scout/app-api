@@ -34,7 +34,7 @@ Start a local MongoDB server by running:
 make db
 ```
 
-## Configuration
+## Development Configuration
 Configuration is passed via environment variables.  
 
 Most configuration fields have default values which will work for local 
