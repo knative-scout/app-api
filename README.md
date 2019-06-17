@@ -168,8 +168,8 @@ these variables):
 - `APP_GH_WEBHOOK_SECRET`
 - `APP_GH_PRIVATE_KEY_PATH`
 
-The indicated by `APP_GH_PRIVATE_KEY` must also contain the appropriate GitHub 
-application's private key.
+The file indicated by `APP_GH_PRIVATE_KEY` must also contain the appropriate
+GitHub application's private key.
 
 ## Deploy
 Run the deploy script:
