@@ -5,7 +5,7 @@ API which curates serverless applications.
 - [Overview](#overview)
 - [Development](#development)
   - [Database](#database)
-  - [Configuration](#Development configuration)
+  - [Configuration](#development-configuration)
   - [Run](#run)
   - [Advanced Run](#advanced-run)
 - [Deployment](#deployment)
