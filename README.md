@@ -5,12 +5,12 @@ API which curates serverless applications.
 - [Overview](#overview)
 - [Development](#development)
   - [Database](#database)
-  - [Configuration](#configuration)
+  - [Configuration](#development-configuration)
   - [Run](#run)
   - [Advanced Run](#advanced-run)
 - [Deployment](#deployment)
   - [GitHub App](#github-app)
-  - [Secrets](#secrets)
+  - [Configuration](#deploy-configuration)
   - [Deploy](#deploy)
   - [Staging Deployment](#staging-deployment)
 
@@ -34,7 +34,7 @@ Start a local MongoDB server by running:
 make db
 ```
 
-## Configuration
+## Development Configuration
 Configuration is passed via environment variables.  
 
 Most configuration fields have default values which will work for local 
@@ -157,38 +157,30 @@ choose `kscout/serverless-apps`.
 
 Click "Install".
 
-## Secrets
-Deployment secrets must be set for a deployment.  
+## Deploy Configuration
+The following environment variables must be set (see
+[Development#Configuration](#development-configuration) for documentation of
+these variables):
 
-Create a JSON / YAML / TOML file with the following structure:
+- `APP_DB_PASSWORD`
+- `APP_GH_INTEGRATION_ID`
+- `APP_GH_INSTALLATION_ID`
+- `APP_GH_WEBHOOK_SECRET`
+- `APP_GH_PRIVATE_KEY_PATH`
 
-- `mongo` (Object): Secrets for Mongo database
-  - `password` (String): Password to be used when creating account for API
-- `github` (Object): GitHub secrets
-  - `installationID` (Integer): GitHub App ID
-  - `integrationID` (Integer): GitHub installation ID
-  - `privateKey` (String): GitHub App private key
-  - `webhookSecret` (String): Secret used by GitHub to sign HMACs for requests
-	made to the API webhook endpoint
-  
+The file indicated by `APP_GH_PRIVATE_KEY` must also contain the appropriate
+GitHub application's private key.
+
 ## Deploy
 Run the deploy script:
 
 ```
-./deploy/deploy.sh -s SECRETS_FILE_FROM_ABOVE -e ENV
-```
-
-Where `ENV` can be a value like `prod` or `staging`.
-
-Then trigger a rollout:
-
-```
-oc rollout latest dc/ENV-serverless-registry-api
+./deploy/deploy.sh -r
 ```
 
 ## Staging Deployment
-The `deploy/staging.sh` script can be used to deploy one's local code to the 
-staging environment.  
+The `deploy/deploy.sh` script can also be used to deploy one's local code to
+the staging environment.  
 
 The staging environment is configured to be served under the 
 `staging-api.kscout.io` domain.  
@@ -199,11 +191,6 @@ stepping on each other's toes.
 To deploy to the staging environment run:
 
 ```
-./deploy/staging.sh rollout
+./deploy/deploy.sh -e staging -rb
 ```
 
-To view the logs from the staging environment run:
-
-```
-./deploy/staging.sh logs
-```

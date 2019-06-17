@@ -1,0 +1,295 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: serverless-registry-api
+  labels:
+    app: serverless-registry-api
+spec:
+  dockerImageRepository: docker.io/kscout/serverless-registry-api
+  tags:
+    - from:
+        kind: DockerImage
+        name: docker.io/kscout/serverless-registry-api:prod-latest
+      name: prod-latest
+      importPolicy:
+        scheduled: true
+    - from:
+        kind: DockerImage
+        name: docker.io/kscout/serverless-registry-api:staging-latest
+      name: staging-latest
+      importPolicy:
+        scheduled: true
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: serverless-registry-api
+  annotations:
+    description: API which curates serverless applications.
+    tags: kscout
+parameters:
+  - name: ENV
+    description: Deployment environment
+    required: True
+  - name: UPPER_ENV
+    description: Uppercase version of ENV
+    required: True
+  - name: MONGO_DB_NAME
+    description: Mongo database name
+    value: serverless-registry-api
+    required: True
+  - name: MONGO_USER
+    description: Mongo user
+    value: serverless-registry-api
+    required: True
+  - name: B64_MONGO_PASSWORD
+    description: Base64 encoded Mongo user password
+    required: True
+  - name: B64_GH_INTEGRATION_ID
+    description: Base64 encoded integration ID of GitHub app
+    required: True
+  - name: B64_GH_INSTALLATION_ID
+    description: Base64 encoded ID of GitHub app
+    required: True
+  - name: B64_GH_PRIVATE_KEY
+    description: Base64 encoded GitHub app private key
+    required: True
+  - name: B64_GH_WEBHOOK_SECRET
+    description: Base64 encoded GitHub webhook secret
+    required: True
+  - name: HOST
+    description: Host from which API will be accessible
+    required: True
+objects:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: ${ENV}-db-config
+      labels:
+        app: serverless-registry-api-mongo
+        env: ${ENV}
+    data:
+      mongoUser: ${MONGO_USER}
+      mongoDbName: ${MONGO_DB_NAME}
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: ${ENV}-mongo-credentials
+      labels:
+        app: serverless-registry-api-mongo
+        env: ${ENV}
+    type: Opaque
+    data:
+      password: ${B64_MONGO_PASSWORD}
+  - apiVersion: apps/v1
+    kind: StatefulSet
+    metadata:
+      name: ${ENV}-serverless-registry-api-mongo
+      labels:
+        app: serverless-registry-api-mongo
+        env: ${ENV}
+    spec:
+      selector:
+        matchLabels:
+          app: serverless-registry-api-mongo
+          env: ${ENV}
+      serviceName: ${ENV}-mongo
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            app: serverless-registry-api-mongo
+            env: ${ENV}
+        spec:
+          containers:
+            - name: mongo
+              image: mongo:latest
+              env:
+                - name: MONGO_INITDB_ROOT_USERNAME
+                  valueFrom:
+                    configMapKeyRef:
+                      name: ${ENV}-db-config
+                      key: mongoUser
+                - name: MONGO_INITDB_ROOT_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: ${ENV}-mongo-credentials
+                      key: password
+                - name: MONGO_INITDB_DATABASE
+                  valueFrom:
+                    configMapKeyRef:
+                      name: ${ENV}-db-config
+                      key: mongoDbName
+              ports:
+                - name: mongo
+                  containerPort: 27017
+              volumeMounts:
+                - name: mongo
+                  mountPath: /data/db
+      volumeClaimTemplates:
+      - metadata:
+          name: mongo
+          labels:
+            app: serverless-registry-api-mongo
+            env: ${ENV}
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 5Gi
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: ${ENV}-serverless-registry-api-mongo
+      labels:
+        app: serverless-registry-api-mongo
+        env: ${ENV}
+    spec:
+      selector:
+        app: serverless-registry-api-mongo
+        env: ${ENV}
+      ports:
+        - port: 27017
+          name: mongo
+          targetPort: mongo
+          protocol: TCP
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: ${ENV}-gh-api-configuration
+      labels:
+        app: serverless-registry-repository
+        env: ${ENV}
+    type: Opaque
+    data:
+      ghInstallationID: ${B64_GH_INSTALLATION_ID}
+      ghIntegrationID: ${B64_GH_INTEGRATION_ID}
+      privateKey: ${B64_GH_PRIVATE_KEY}
+      webhookSecret: ${B64_GH_WEBHOOK_SECRET}
+  - apiVersion: apps.openshift.io/v1
+    kind: DeploymentConfig
+    metadata:
+      name: ${ENV}-serverless-registry-api
+      labels:
+        app: serverless-registry-api
+        env: ${ENV}
+    spec:
+      replicas: 1
+      selector:
+        app: serverless-registry-api
+        env: ${ENV}
+      triggers:
+        - type: ImageChange
+          imageChangeParams:
+            containerNames:
+              - serverless-registry-api
+            from:
+              kind: ImageStreamTag
+              name: serverless-registry-api:${ENV}-latest
+      template:
+        metadata:
+          labels:
+            app: serverless-registry-api
+            env: ${ENV}
+        spec:
+          volumes:
+            - name: gh-api-configuration
+              secret:
+                secretName: ${ENV}-gh-api-configuration
+          containers:
+            - name: serverless-registry-api
+              image: kscout/serverless-registry-api:${ENV}-latest
+              env:
+                - name: APP_HTTP_ADDR
+                  value: ":5000"
+                - name: APP_DB_USER
+                  valueFrom:
+                    configMapKeyRef:
+                      name: ${ENV}-db-config
+                      key: mongoUser
+                - name: APP_DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: ${ENV}-mongo-credentials
+                      key: password
+                - name: APP_DB_NAME
+                  valueFrom:
+                    configMapKeyRef:
+                      name: ${ENV}-db-config
+                      key: mongoDbName
+                - name: APP_DB_HOST
+                  value: $(${UPPER_ENV}_SERVERLESS_REGISTRY_API_MONGO_SERVICE_HOST)
+                - name: APP_GH_PRIVATE_KEY_PATH
+                  value: /mnt/gh-api-config/privateKey
+                - name: APP_GH_INTEGRATION_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: ${ENV}-gh-api-configuration
+                      key: ghIntegrationID
+                - name: APP_GH_INSTALLATION_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: ${ENV}-gh-api-configuration
+                      key: ghInstallationID
+                - name: APP_GH_WEBHOOK_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: ${ENV}-gh-api-configuration
+                      key: webhookSecret
+              volumeMounts:
+                - name: gh-api-configuration
+                  mountPath: /mnt/gh-api-config
+                  readOnly: true
+              ports:
+                - name: http
+                  containerPort: 5000
+                  protocol: TCP
+              livenessProbe:
+                httpGet:
+                  path: /health
+                  port: http
+                  scheme: HTTP
+              readinessProbe:
+                httpGet:
+                  path: /health
+                  port: http
+                  scheme: HTTP              
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: ${ENV}-serverless-registry-api
+      labels:
+        app: serverless-registry-api
+        env: ${ENV}
+    spec:
+      type: ClusterIP
+      selector:
+        app: serverless-registry-api
+        env: ${ENV}
+      ports:
+        - protocol: TCP
+          port: 80
+          targetPort: http
+          name: http
+  - apiVersion: route.openshift.io/v1
+    kind: Route
+    metadata:
+      name: ${ENV}-serverless-registry-api
+      labels:
+        app: serverless-registry-api
+        env: ${ENV}
+    spec:
+      host: ${HOST}
+      path: /
+      to:
+        kind: Service
+        name: ${ENV}-serverless-registry-api
+        weight: 100
+      port:
+        targetPort: http
+      tls:
+        termination: edge
+    status:
+      ingress:
+        - host: ${HOST}

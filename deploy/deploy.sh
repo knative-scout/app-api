@@ -1,51 +1,22 @@
 #!/usr/bin/env bash
 #?
-# deploy.sh - Deploy API and database
+# deploy.sh - Deploy serverless registry API
 #
 # USAGE
 #
-#    deploy.sh [-e ENV] [-h HOST] [CMD]
+#    deploy.sh [-e ENV] [-rb]
 #
 # OPTIONS
 #
-#    -s SECRETS_F    File which contains secret data, see SECRETS section for required keys
-#    -e ENV     (Optional) Deployment environment, defaults to "prod"
-#    -h HOST    (Optional) API host. If ENV == prod defaults to "api.kscout.io".
-#                          If ENV is anything else defaults to "${ENV}-api.kscout.io"
-#
-# ARGUMENTS
-#
-#    CMD    (Optional) Kubectl command, defaults to "apply"
-#
-# SECRETS
-#
-#    Secrets will be provided via JSON / YAML / TOML file with the following structure:
-#
-#    - mongo (Object): MongoDB secrets
-#      - password (String): API user password
-#    - github (Object): GitHub secrets
-#      - `installationID` (Integer): GitHub App ID
-#      - `integrationID` (Integer): GitHub installation ID
-#      - privateKey (String): GitHub App private key
-#      - webhookSecret (String): Secret GitHub uses to sign an HMAC of requests sent
-#                                to the API webhook endpoint
-#
-# BEHAVIOR
-#
-#    Runs gomplate (https://docs.gomplate.ca/) over the resource files in the
-#    deploy/templates directory. Resource files can use Go templating. The following
-#    keys will hold data:
-#
-#    - .config: Will hold values of -e and -h options in object with keys "env" and "host"
-#    - .secrets: Holds secret values, see SECRETS section for structure of object
-#
-#    Deploys the resulting YAML to Kubernetes under the kscout namespace.
+#    -e ENV    Deployment environment, defaults to "prod"
+#    -r        Trigger a rollout
+#    -b        Build and push the Docker container
 #
 #?
 
-prog_dir=$(realpath $(dirname "$0")) 
+# Helpers
+prog_dir=$(realpath $(dirname "$0"))
 
-# {{{1 Helpers
 function die() {
     echo "Error: $@" >&2
     exit 1
@@ -55,108 +26,118 @@ function bold() {
     echo "$(tput bold)$@$(tput sgr0)"
 }
 
-# {{{1 Options
-# {{{2 Defaults
-env=prod
-host=api.kscout.io
-
-# {{{2 Get
-while getopts "s:e:h:" opt; do
+# Options
+while getopts "e:rb" opt; do
     case "$opt" in
-	e)
-	    env="$OPTARG"
-	    ;;
-	h)
-	    host="$OPTARG"
-	    custom_host=true
-	    ;;
-	s)
-	    secrets_file="$(realpath $OPTARG)"
-	    ;;
+	e) env="$OPTARG" ;;
+	r) do_rollout=true ;;
+	b) do_build=true ;;
 	'?') die "Unknown option" ;;
     esac
 done
 
-shift $(expr $OPTIND - 1)
+# Defaults / other configuration
+if [ -z "$env" ]; then
+    env=prod
+fi
 
-# {{{2 Computed defaults
-if [ -z "$custom_host" ] && [[ "$env" != "prod" ]]; then
+if [[ "$env" == "prod" ]]; then
+    host="api.kscout.io"
+else
     host="$env-api.kscout.io"
 fi
 
-# {{{2 Ensure -s option provided
-if [ -z "$secrets_file" ]; then
-    die "-s SECRETS_F option must be provided"
+app=serverless-registry-api
+dc_name="$env-$app"
+docker_tag="kscout/$app:$env-latest"
+
+template_parameters=("ENV=$env"
+		     "UPPER_ENV=$(printf $env | tr '[:lower:]' '[:upper:]')"
+		     "HOST=$host")
+
+if [ -z "$APP_DB_PASSWORD" ]; then
+    die "APP_DB_PASSWORD must be set"
 fi
+template_parameters+=("B64_MONGO_PASSWORD=$(printf $APP_DB_PASSWORD | base64)")
 
-if [ ! -f "$secrets_file" ]; then
-    die "-s $secrets_file file does not exist"
+
+if [ -z "$APP_GH_INTEGRATION_ID" ]; then
+    die "APP_GH_INTEGRATION_ID must be set"
 fi
+template_parameters+=("B64_GH_INTEGRATION_ID=$(printf $APP_GH_INTEGRATION_ID | base64)")
 
-secrets_file_ext=${secrets_file##*.}
-
-# {{{1 Arguments
-cmd="$1"
-
-if [ -z "$cmd" ]; then
-    cmd=apply
+if [ -z "$APP_GH_INSTALLATION_ID" ]; then
+    die "APP_GH_INSTALLATION_ID must be set"
 fi
+template_parameters+=("B64_GH_INSTALLATION_ID=$(printf $APP_GH_INSTALLATION_ID | base64)")
 
-# {{{1 Print run parameters
-bold "Configuration"
-echo "env : $env"
-echo "host: $host"
+if [ -z "$APP_GH_PRIVATE_KEY_PATH" ]; then
+    die "APP_GH_PRIVATE_KEY_PATH must be set"
+fi
+if [ ! -f "$APP_GH_PRIVATE_KEY_PATH" ]; then
+    die "Private key \"$APP_GH_PRIVATE_KEY_PATH\" does not exist"
+fi
+template_parameters+=("B64_GH_PRIVATE_KEY=$(cat $APP_GH_PRIVATE_KEY_PATH | base64)")
 
-# {{{1 Bake templates
-bold "Baking resource templates"
-# {{{2 Save input option data as file
-sha=$(echo "$data_file_contents" | sha256sum | awk '{ print $1 }')
+if [ -z "$APP_GH_WEBHOOK_SECRET" ]; then
+    die "APP_GH_WEBHOOK_SECRET must be set"
+fi
+template_parameters+=("B64_GH_WEBHOOK_SECRET=$(printf $APP_GH_WEBHOOK_SECRET | base64)")
 
-data_file_contents="{\"env\": \"$env\", \"host\": \"$host\"}"
-data_file="/tmp/$sha.json"
-
-out_dir="/tmp/$sha-out"
-
-mkdir -p "$out_dir"
-echo "$data_file_contents" > "$data_file"
-
-function cleanup() {
-    if [ -f "$data_file" ]; then
-	if ! rm "$data_file"; then
-	    die "Failed to delete data file: $data_file"
-	fi
+# Build
+if [ -n "$do_build" ]; then
+    bold "Building $docker_tag"
+    
+    if ! docker build -t "$docker_tag" .; then
+	die "Failed to build $docker_tag"
     fi
 
-    if [ -d "$out_dir" ]; then
-	if ! rm -rf "$out_dir"; then
-	    die "Failed to delete out dir: $out_dir"
-	fi
+    if ! docker push "$docker_tag"; then
+	die "Failed to push $docker_tag"
     fi
-}
 
-trap cleanup EXIT
+    if ! oc tag "docker.io/$docker_tag" "$docker_tag" --scheduled; then
+	die "Failed to import $docker_tag into OpenShift"
+    fi
 
-# {{{2 Run
-docker run \
-       -it \
-       --rm \
-       -v "$prog_dir/templates:/in" \
-       -v "$out_dir:/out" \
-       -v "$data_file:/tmp/data-file.json" \
-       -v "$secrets_file:/tmp/secrets-file.$secrets_file_ext" \
-       noahhuppert/gomplate:dev \
-       --input-dir /in \
-       --output-dir /out \
-       -c config=/tmp/data-file.json \
-       -c secrets=/tmp/secrets-file."$secrets_file_ext"
+    image_sha=$(docker inspect --format='{{ index .RepoDigests 0 }}' "$docker_tag")
+    if [[ "$?" != "0" ]]; then
+	die "Failed to get $docker_tag SHA"
+    fi
 
-if [[ "$?" != "0" ]]; then
-    die "Failed to bake templates"
+    while true; do
+	if oc describe is "$app" | grep "$image_sha"; then
+	    echo "Image stream has new $docker_tag"
+	    break
+	fi
+
+	echo "Image stream does not have new $docker_tag yet..."
+	sleep 1
+    done
 fi
 
-# {{{2 Deploy
-bold "kubectl -n kscout $cmd"
-for file in $(ls "$out_dir"); do
-    cat "$out_dir/$file" | kubectl -n kscout "$cmd" --filename -
-done
+# Create Kubernetes resources
+bold "Deploying Kubernetes resources"
 
+if ! oc apply --filename "$prog_dir/resources.yaml"; then
+    die "Failed to deploy unprocessed resources"
+fi
+
+if ! oc process "$app" "${template_parameters[@]}" | oc apply --filename -; then
+    die "Failed to deploy process resources"
+fi
+
+# Rollout
+if [ -n "$do_rollout" ]; then
+    bold "Triggering rollout"
+
+    if ! oc rollout latest "dc/$dc_name"; then
+	die "Failed to trigger rollout"
+    fi
+
+    if ! oc rollout status "dc/$dc_name"; then
+	die "Failed to wait for rollout to complete"
+    fi
+fi
+
+bold "Done"
