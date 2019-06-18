@@ -172,10 +172,12 @@ The file indicated by `APP_GH_PRIVATE_KEY` must also contain the appropriate
 GitHub application's private key.
 
 ## Deploy
-Run the deploy script:
+Run the following commands
 
 ```
-./deploy/deploy.sh -r
+oc apply -f deploy/resources.yaml
+./deploy/template.sh -e prod | oc apply -f -
+oc rollout latest dc/prod-serverless-registry-api
 ```
 
 ## Staging Deployment
@@ -191,6 +193,7 @@ stepping on each other's toes.
 To deploy to the staging environment run:
 
 ```
-./deploy/deploy.sh -e staging -rb
+oc apply -f deploy/resources.yaml
+./deploy/template.sh -e staging | oc apply -f -
+oc rollout latest dc/staging-serverless-registry-api
 ```
-

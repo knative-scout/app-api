@@ -88,7 +88,6 @@ func main() {
 
 	mDb := mDbClient.Database(cfg.DbName)
 	mDbApps := mDb.Collection("apps")
-	mDbSubmissions := mDb.Collection("submissions")
 
 	logger.Debug("connected to Db")
 
@@ -309,7 +308,6 @@ func main() {
 		Cfg:            cfg,
 		MDb:            mDb,
 		MDbApps:        mDbApps,
-		MDbSubmissions: mDbSubmissions,
 		Gh:             gh,
 	}
 
