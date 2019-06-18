@@ -20,7 +20,7 @@ function header_text {
 
 
 YAML_URL="https://raw.githubusercontent.com/kscout/serverless-apps/master/serverless-example-python/deployment/service.yaml"
-CONFIG_URL="demo.txt"
+CONFIG_URL="https://api.kscout.io/apps/{{app.id}}/deploy/parameters"
 
 
 header_text "Installing Serverless App"
