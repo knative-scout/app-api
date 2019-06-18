@@ -5,6 +5,7 @@ API design.
 - [Overview](#overview)
 - [Data Model](#data-model)
 - [Endpoints](#endpoints)
+- [Deployment Script](#deployment-script)
 
 # Overview
 HTTP RESTful API.  
@@ -31,7 +32,20 @@ Schema:
 - `tags` (List[String])
 - `verification_status` (String): One of `pending`, `verifying`, `good`, `bad`
 - `github_url` (String)
-- `deployment_file_urls` (List[String])
+- `deployment` (Object): Deployment details, has keys:
+  - `plain_resource_yaml` (List[String]): List of deployment resource YAML. Each
+	entry is the YAML for 1 resource
+  - `parameterized_resource_yaml` (List[String]): Same as `plain_resource_yaml`
+	except `ConfigMap` and `Secret` resource key fields have placeholder values.
+	These placeholder values are `id` fields from the `parameters` object.
+  - `parameters` (List[Object]): Holds deployment parameters, has keys:
+	- `id` (String): Unique name for parameter. Guaranteed to only appear once
+		throughout all entries in `parameterized_resource_yaml`
+    - `key` (String): Name of parameter
+	- `default` (String): Base64 encoded default value for parameter, this is
+		the value that appears in the initial unprocessed deployment file
+	- `base64` (String): `Y` if the value should be base64 encoded before being
+		placed in the resource file, `N` otherwise
 - `version` (String)
 - `author` (String)
 - `maintainer` (String)
