@@ -15,8 +15,7 @@ import (
 )
 
 
-// AppCategoriesHandler is used to get all the categories stored in the database,
-// can also be used to get categories of matched apps if query is provided
+// AppsDeployHandler is used to send deploy.sh file in curl to users' terminal
 type AppsDeployHandler struct {
 	BaseHandler
 }
@@ -28,6 +27,7 @@ func (h AppsDeployHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	appID := vars["appID"]
 
+	//opening deploy.sh file
 	file, err := os.Open("handlers/deploy.sh")
 	if err != nil {
 		log.Fatal(err)
@@ -40,9 +40,8 @@ func (h AppsDeployHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	b, err := ioutil.ReadAll(file)
-	//fmt.Print(b)
 
-	resp := strings.Replace(string(b), "{{app.id}}", appID,1)
+	resp := strings.Replace(string(b), "{{app.id}}", appID,-1)
 
 	h.RespondTEXT(w, http.StatusOK,resp)
 }

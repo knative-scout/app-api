@@ -19,9 +19,8 @@ function header_text {
 }
 
 
-YAML_URL="https://raw.githubusercontent.com/kscout/serverless-apps/master/serverless-example-python/deployment/service.yaml"
+YAML_URL="https://api.kscout.io/apps/{{app.id}}/deploy/parameterized-deployment.yaml"
 CONFIG_URL="https://api.kscout.io/apps/{{app.id}}/deploy/parameters"
-
 
 header_text "Installing Serverless App"
 
@@ -63,7 +62,7 @@ do
         SED_DATA="$SED_DATA ; s/$ID/$DFLT/";;
       * ) echo "invalid input, Please run the script again";;
     esac
-done 9< $CONFIG_URL
+done 9<<< "$(curl '$CONFIG_URL')"
 
 echo # new line
 
