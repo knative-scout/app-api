@@ -32,9 +32,20 @@ Schema:
 - `tags` (List[String])
 - `verification_status` (String): One of `pending`, `verifying`, `good`, `bad`
 - `github_url` (String)
-- `deployments` (Map[String]List[String]): Holds deployment resource YAML. Keys
-  are versions. Values are lists of resource YAML. Each list entry holds the 
-  YAML for one resource.
+- `deployment` (Object): Deployment details, has keys:
+  - `resource_yaml` (List[String]): Each list entry holds the YAML for one
+	deployment resource
+  - `parameterized_resource_yaml` (List[String]): Same as `resource_yaml` except
+	values in `ConfigMap` and `Secret` resources are replaced with bash 
+	variable names from `parameters`
+  - `parameters` (List[Object]): Information about parameters in
+	`parameterized_yaml`, has keys:
+     - `substitution_variable` (String): Name of variable substituted for the
+	   value in `parameterized_yaml`
+	 - `display_name` (String): Name of variable to display to user
+	 - `default_value` (String): Value that existed before was parameterized
+	 - `requires_base64` (Boolean): Indicates if the value must be base64 
+		 encoded in the template
 - `version` (String)
 - `author` (String)
 - `maintainer` (String)

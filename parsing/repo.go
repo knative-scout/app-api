@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"crypto/sha256"
+	"regexp"
 
 	"github.com/kscout/serverless-registry-api/models"
 	"github.com/kscout/serverless-registry-api/validation"
@@ -13,6 +14,8 @@ import (
 	"github.com/google/go-github/v26/github"
 	"gopkg.in/yaml.v2"
 	"gopkg.in/go-playground/validator.v9"
+	v1Meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1Core "k8s.io/api/core/v1"
 )
 
 // RepoParser reads GitHub repositories for serverless application information
@@ -35,6 +38,9 @@ type RepoParser struct {
 	// RepoRef is the Git reference to parse data at
 	RepoRef string
 }
+
+// invalidBashVarChars matches characters that are not allowed to be in bash variable names
+var invalidBashVarChars = regexp.MustCompile("[^a-zA-Z0-9]")
 
 // GetAppIDs returns the IDs of all the serverless applications in a repository
 func (p RepoParser) GetAppIDs() ([]string, error) {
@@ -251,8 +257,13 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				app.ScreenshotURLs = urls
 				
 			case "deployment":
-				// {{{2 Get files in deployment directory
-				urls, err := p.GetDownloadURLs(fmt.Sprintf("%s/deployment", id))
+				// {{{2 Get YAML for each resource
+				// {{{3 Get files in directory
+				_, dirContents, _, err := p.GH.Repositories.GetContents(p.Ctx, p.RepoOwner,
+					p.RepoName, fmt.Sprintf("%s/deployment", id),
+					&github.RepositoryContentGetOptions{
+						Ref: p.RepoRef,
+					})
 				if err != nil {
 					errs = append(errs, ParseError{
 						What: whatDir,
@@ -263,8 +274,193 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					})
 					continue
 				}
-				
-				app.DeploymentFileURLs = urls
+
+				// {{{3 Get content of each file
+				filesTxt := []string{}
+				for _, deployContent := range dirContents {
+					if *content.Type == "dir" {
+						continue
+					}
+
+					txt, err := p.GetFileContent(
+						fmt.Sprintf("%s/deployment/%s",
+							id, *content.Name))
+					if err != nil {
+						errs = append(errs, ParseError{
+							What: fmt.Sprintf("`%s/deployment/%s`"+
+								"file", id, *content.Name),
+							Why: "failed to get content of file "+
+								"using the GitHub API, an error "+
+								"response was returned",
+							InternalError: err,
+						})
+						continue
+					}
+					
+					filesTxt = append(filesTxt, txt)
+				}
+
+				// {{{3 Split content up by resource
+				resourcesTxt := []string{}
+
+				for _, fileTxt := range filesTxt {
+					lines := []string{}
+					for _, line := strings.Split(fileTxt, "\n") {
+						if strings.ReplaceAll(line, " ", "") == "---" {
+							if len(lines) > 0 {
+								resourcesTxt = append(resourcesTxt,
+									strings.Join(lines, "\n"))
+								lines := []string{}
+							}
+						} else {
+							lines = append(lines, line)
+						}
+					}
+					
+					if len(lines) > 0 {
+						resourcesTxt = append(resourcesTxt,
+							strings.Join(lines, "\n"))
+					}
+				}
+
+				// {{{2 Parse each resource and determine if can be paramterized
+				params := []models.AppDeployParameter{}
+				parameterizedTxt := []string{}
+
+				for _, resourceTxt := range resourcesTxt {
+					// {{{3 Get type meta
+					var rawYAML interface{}
+					if err := yaml.Unmarshal([]byte(resourceTxt), &rawYAML); err != nil {
+						errs = append(errs, ParseError{
+							What: whatDir,
+							Why: fmt.Sprintf("failed to parse deployment file content as YAML: %s",
+								err.Error()),
+							FixInstructions: "check deployment files YAML syntax",
+						})
+						continue
+					}
+
+					asJSON, err := json.Marshal(rawYAML)
+					if err != nil {
+						errs = append(errs, ParseError{
+							What: whatDir,
+							Why: fmt.Sprintf("failed to convert deployment file into JSON: %s",
+								err.Error()),
+							FixInstructions: "check deployment files YAML syntax",
+						})
+						continue
+					}
+
+					var typeMeta v1Meta.TypeMeta
+					if err := json.Unmarshal(asJSON, &typeMeta); err != nil {
+						errs = append(errs, ParseError{
+							What: whatDir,
+							Why: fmt.Sprintf("failed to parse deployment resource type metadata: %s",
+								err.Error()),
+							FixInstructions: "check deployment files YAML syntax",
+						})
+						continue
+					}
+
+					// {{{3 Determine if we should parameterize it
+					if typeMeta.APIVersion == "v1" && typeMeta.Kind == "Secret" {
+						// {{{4 Parse as Secret
+						var secret v1Core.Secret
+						if err := json.Unmarshal(asJSON, &secret); err != nil {
+							errs = append(errs, ParseError{
+								WhatDir: whatDir,
+								Why: fmt.Sprintf("failed to parse deployment v1.Secret: %s",
+									err.Error()),
+								FixInstructions: "check deployment files YAML syntax",
+							})
+							continue
+						}
+
+						// {{{4 Substitute parameters
+						newData := map[string][]byte{}
+						for key, data := range secret.Data {
+							param := models.AppDeployParameter{
+								SubstitutionVariable: fmt.Sprintf("secret_%s_%s",										
+									invalidBashVarChars.ReplaceAllString(secret.Name, "_"),
+									invalidBashVarChars.ReplaceAllString(key, "_")),
+								DisplayName: fmt.Sprintf("\"%s\" key in \"%\" secret",
+									key, secret.Name),
+								DefaultValue: string(data),
+								RequiresBase64: true,
+							}
+							params = append(params, param)
+							
+							newData[key] = []byte(fmt.Sprintf("$%s", param.SubstitutionVariable))
+						}
+
+						secret.Data = newData
+
+						// {{{4 Save substituted parameters
+						subBytes, err := yaml.Marshal(secret)
+						if err != nil {
+							errs = append(errs, ParseError{
+								WhatDir: whatDir,
+								Why: fmt.Sprintf("failed to represent deployment v1.Secret as YAML: %s",
+									err.Error()),
+								FixInstructions: "check deployment files YAML syntax",
+							})
+							continue
+						}
+						parameterizedTxt = append(parameterizedTxt, string(subBytes))
+					} else if typeMeta.APIVersion == "v1" && typeMeta.Kind == "ConfigMap" {
+						// {{{4 Parse as ConfigMap
+						var configMap v1Core.ConfigMap
+						if err := json.Unmarshal(asJSON, &configMap); err != nil {
+							errs = append(errs, ParseError{
+								WhatDir: whatDir,
+								Why: fmt.Sprintf("failed to parse deployment v1.ConfigMap: %s",
+									err.Error()),
+								FixInstructions: "check deployment files YAML syntax",
+							})
+							continue
+						}
+
+						// {{{4 Substitute parameters
+						newData := map[string][]byte{}
+						for key, data := range configMap.Data {
+							param := models.AppDeployParameter{
+								SubstitutionVariable: fmt.Sprintf("config_map_%s_%s",										
+									invalidBashVarChars.ReplaceAllString(configMap.Name, "_"),
+									invalidBashVarChars.ReplaceAllString(key, "_")),
+								DisplayName: fmt.Sprintf("\"%s\" key in \"%\" config map",
+									key, configMap.Name),
+								DefaultValue: string(data),
+								RequiresBase64: true,
+							}
+							params = append(params, param)
+							
+							newData[key] = []byte(fmt.Sprintf("$%s", param.SubstitutionVariable))
+						}
+
+						configMap.Data = newData
+
+						// {{{4 Save substituted parameters
+						subBytes, err := yaml.Marshal(configMap)
+						if err != nil {
+							errs = append(errs, ParseError{
+								WhatDir: whatDir,
+								Why: fmt.Sprintf("failed to represent deployment v1.ConfigMap as YAML: %s",
+									err.Error()),
+								FixInstructions: "check deployment files YAML syntax",
+							})
+							continue
+						}
+						parameterizedTxt = append(parameterizedTxt, string(subBytes))
+					} else {
+						parameterizedTxt = append(parameterizedTxt, resourceTxt)
+					}
+				}
+
+				app.Deployment = models.AppDeployment{
+					ResourceYAML: resourcesTxt,
+					ParameterizedYAML: parameterizedTxt,
+					Parameters: params,
+				}
 			}
 		}
 	}
