@@ -36,19 +36,6 @@ Schema:
 - `author` (String)
 - `maintainer` (String)
 
-## Submission Model
-`submissions` collection.
-
-[Documentation of schema fields](https://godoc.org/github.com/kscout/serverless-registry-api/models#Submission)
-
-Schema:
-
-- `pr_number` (Integer)
-- `apps` (List[Object]):
-  - `app` ([App Model](#app-model))
-  - `verification_status` (Object):
-	- `format_correct` (Boolean)
-
 ## Resource Model
 `resource` collection.
 
