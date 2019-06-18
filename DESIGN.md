@@ -189,6 +189,12 @@ Newline separated list of entries. Each entry has 4 fields:
 - `BASE64`: Indicates if the value of this parameter must be base64 encoded 
   before being placed in the parameterized deployment file.
   
+Entries are placed in the following order on a line:
+
+```
+ID KEY DEFAULT BASE64
+```
+  
 ### Get Parameterized Deployment File
 `GET /apps/<app_id>/parameterized-deployment.yaml`  
 
