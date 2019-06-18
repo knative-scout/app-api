@@ -1,0 +1,3 @@
+API_YES apikey jahdn<>kjdd1 Y
+API_NO apikey jahdn<>kjdd2 N
+API_YES% apikey jahdn<>kjdd3 Y
