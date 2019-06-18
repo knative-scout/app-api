@@ -150,6 +150,62 @@ Response:
 
 - `categories` (List[String])
 
+### Get Deployment File
+`GET /apps/<app_id>/deployment.yaml`  
+
+Get file with all an app's deployment resources.
+
+Request:
+
+- `app_id` (String): ID of app
+
+Response: YAML text of deployment resources
+
+### Get Deployment Parameters
+`GET /apps/<app_id>/parameters`
+
+Get parameters of an app's deployment.  
+
+Parameters are `ConfigMap` or `Secret` resource keys which can be customized by
+the user if they want.  
+
+The results of this endpoint are meant to be parsed by a bash script. To make 
+this possible data is grouped into entries. Each entry has multiple fields.  
+Entries are separated by newlines. Fields are separated by spaces.
+
+Request:
+
+- `app_id` (String): ID of app
+
+Response:
+
+Newline separated list of entries. Each entry has 4 fields: 
+
+- `ID`: Unique name for parameter. This string is guaranteed to appear exactly 
+  once in the parameterized version of the deployment file. It will be located
+  in the location where the value of the parameter should be placed
+- `KEY`: Name of parameter
+- `DEFAULT`: Base64 encoded default value of parameter
+- `BASE64`: Indicates if the value of this parameter must be base64 encoded 
+  before being placed in the parameterized deployment file.
+  
+### Get Parameterized Deployment File
+`GET /apps/<app_id>/parameterized-deployment.yaml`  
+
+Get file with all an app's deployment resources.  
+Any keys in `ConfigMap` or `Secret` resources will have placeholder values.  
+
+These placeholder values are the `ID` fields from the 
+[Get Deployment Parameters](#get-deployment-parameters) endpoint. Each will be
+unique to the entire file and can be safely found-and-replaced with the actual
+parameter value.
+
+Request:
+
+- `app_id` (String): ID of app
+
+Response: YAML text of deployment resources
+
 ### Search Resources
 `GET /resources?query=<query>&categories=<categories>`
 
@@ -177,47 +233,6 @@ Response:
 
 - `authentication_token` (String): Use this to authenticate with the App API in
   the future
-
-## Cluster Endpoints
-### List Clusters
-`GET /clusters`
-
-Lists available OpenShift clusters.
-
-Authentication required.
-
-Request: None
-
-Response:
-
-- `clusters` (List[Object]): Objects with keys
-  - `id` (String)
-  - `name` (String)
-
-### Deploy To Cluster
-`POST /clusters/<id>/deploy?app_id=<app_id>`
-
-Deploy application to OpenShift cluster.
-
-Request:
-
-- `id` (String): ID of OpenShift cluster
-- `app_id` (String): ID of app to deploy
-
-Response: None
-
-### Get Deploy Instructions
-`GET /clusters/deploy_instructions?app_id=<app_id>`
-
-Get manual deploy instructions for app.
-
-Request:
-
-- `app_id` (String): ID of app to return instructions for
-
-Response:
-
-- `instructions` (String)
 
 ## Meta Endpoints
 ### Health Check
