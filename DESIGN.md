@@ -32,20 +32,9 @@ Schema:
 - `tags` (List[String])
 - `verification_status` (String): One of `pending`, `verifying`, `good`, `bad`
 - `github_url` (String)
-- `deployment` (Object): Deployment details, has keys:
-  - `plain_resource_yaml` (List[String]): List of deployment resource YAML. Each
-	entry is the YAML for 1 resource
-  - `parameterized_resource_yaml` (List[String]): Same as `plain_resource_yaml`
-	except `ConfigMap` and `Secret` resource key fields have placeholder values.
-	These placeholder values are `id` fields from the `parameters` object.
-  - `parameters` (List[Object]): Holds deployment parameters, has keys:
-	- `id` (String): Unique name for parameter. Guaranteed to only appear once
-		throughout all entries in `parameterized_resource_yaml`
-    - `key` (String): Name of parameter
-	- `default` (String): Base64 encoded default value for parameter, this is
-		the value that appears in the initial unprocessed deployment file
-	- `base64` (String): `Y` if the value should be base64 encoded before being
-		placed in the resource file, `N` otherwise
+- `deployments` (Map[String]List[String]): Holds deployment resource YAML. Keys
+  are versions. Values are lists of resource YAML. Each list entry holds the 
+  YAML for one resource.
 - `version` (String)
 - `author` (String)
 - `maintainer` (String)
@@ -165,66 +154,29 @@ Response:
 - `categories` (List[String])
 
 ### Get Deployment File
-`GET /apps/<app_id>/deployment.yaml`  
+`GET /apps/<app_id>/version/<version>/deployment.yaml`  
 
 Get file with all an app's deployment resources.
 
 Request:
 
 - `app_id` (String): ID of app
+- `version` (String): Version of app
 
 Response: YAML text of deployment resources
 
-### Get Deployment Parameters
-`GET /apps/<app_id>/parameters`
+### Get Deployment Script
+`GET /apps/<app_id>/version/<version>/deploy.sh`
 
-Get parameters of an app's deployment.  
-
-Parameters are `ConfigMap` or `Secret` resource keys which can be customized by
-the user if they want.  
-
-The results of this endpoint are meant to be parsed by a bash script. To make 
-this possible data is grouped into entries. Each entry has multiple fields.  
-Entries are separated by newlines. Fields are separated by spaces.
+Get deployment script for version of app.  
+See [deployment script](#deployment-script) for design details.
 
 Request:
 
 - `app_id` (String): ID of app
+- `version` (String): Version of app
 
-Response:
-
-Newline separated list of entries. Each entry has 4 fields: 
-
-- `ID`: Unique name for parameter. This string is guaranteed to appear exactly 
-  once in the parameterized version of the deployment file. It will be located
-  in the location where the value of the parameter should be placed
-- `KEY`: Name of parameter
-- `DEFAULT`: Base64 encoded default value of parameter
-- `BASE64`: Indicates if the value of this parameter must be base64 encoded 
-  before being placed in the parameterized deployment file.
-  
-Entries are placed in the following order on a line:
-
-```
-ID KEY DEFAULT BASE64
-```
-  
-### Get Parameterized Deployment File
-`GET /apps/<app_id>/parameterized-deployment.yaml`  
-
-Get file with all an app's deployment resources.  
-Any keys in `ConfigMap` or `Secret` resources will have placeholder values.  
-
-These placeholder values are the `ID` fields from the 
-[Get Deployment Parameters](#get-deployment-parameters) endpoint. Each will be
-unique to the entire file and can be safely found-and-replaced with the actual
-parameter value.
-
-Request:
-
-- `app_id` (String): ID of app
-
-Response: YAML text of deployment resources
+Response: Bash script text
 
 ### Search Resources
 `GET /resources?query=<query>&categories=<categories>`
@@ -263,3 +215,18 @@ Used to determine if server is operating fully.
 Request: None
 
 Response: None
+
+# Deployment Script
+A one line deployment command will be provided to users in the form:
+
+```
+curl -L https://api.kscout.io/apps/<app_id>/version/<version>/deploy.sh | bash
+```
+
+This script will allow users to tweak the values of `ConfigMap` and `Secret`
+resources before applying them to a Kubernetes cluster.  
+
+To facilitate this process the script will be automatically generated on the
+server. It will contain a heredoc with the app's deployment YAML. For each of
+the `ConfigMap` or `Secret` keys it will place a variable. It will prompt the
+user for the value of this variable, or use the default value.
