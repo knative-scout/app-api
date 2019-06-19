@@ -88,7 +88,7 @@ type App struct {
 	GitHubURL string `json:"github_url" bson:"github_url" validate:"required"`
 
 	// Deployment datan
-	Deployment AppDeployment `json:"-" bson:"deployment" validate:"required"`
+	Deployment AppDeployment `json:"deployment" bson:"deployment" validate:"required"`
 
 	// Version is the semantic version of the app
 	Version string `json:"version" bson:"version" validate:"required"`

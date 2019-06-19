@@ -346,10 +346,10 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 
 				for _, resourceBytes := range resourcesJSON {
 					var typeMeta v1Meta.TypeMeta
-					if err := yaml.Unmarshal(resourceBytes, &typeMeta); err != nil {
+					if err := json.Unmarshal(resourceBytes, &typeMeta); err != nil {
 						errs = append(errs, ParseError{
 							What: whatDir,
-							Why: fmt.Sprintf("failed to parse a resource's Kubernetes type information as YAML: %s",
+							Why: fmt.Sprintf("failed to parse a resource's Kubernetes type information as JSON: %s",
 								err.Error()),
 							FixInstructions: "ensure all deployment resources have an `apiVersion` and `kind` field and proper YAML formatting",
 						})
@@ -365,10 +365,10 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					if typeMeta.Kind == "Secret" {
 						// {{{4 Parse as Secret
 						var secret v1Core.Secret
-						if err := yaml.Unmarshal(resourceBytes, &secret); err != nil {
+						if err := json.Unmarshal(resourceBytes, &secret); err != nil {
 							errs = append(errs, ParseError{
 								What: whatDir,
-								Why: fmt.Sprintf("failed to parse Kubernetes resource with `kind: Secret` as YAML: %s",
+								Why: fmt.Sprintf("failed to parse Kubernetes resource with `kind: Secret` as JSON: %s",
 									err.Error()),
 								FixInstructions: "ensure all `Secret` resources follow the `v1.Secret` schema",
 							})
@@ -395,11 +395,11 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						secret.Data = newData
 
 						// {{{4 Save substituted parameters
-						subBytes, err := yaml.Marshal(secret)
+						subBytes, err := json.Marshal(secret)
 						if err != nil {
 							errs = append(errs, ParseError{
 								What: whatDir,
-								Why: fmt.Sprintf("failed to represent deployment v1.Secret as YAML: %s",
+								Why: fmt.Sprintf("failed to represent deployment v1.Secret as JSON: %s",
 									err.Error()),
 								FixInstructions: "check deployment files YAML syntax",
 							})
@@ -409,10 +409,10 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					} else if typeMeta.Kind == "ConfigMap" {
 						// {{{4 Parse as ConfigMap
 						var configMap v1Core.ConfigMap
-						if err := yaml.Unmarshal(resourceBytes, &configMap); err != nil {
+						if err := json.Unmarshal(resourceBytes, &configMap); err != nil {
 							errs = append(errs, ParseError{
 								What: whatDir,
-								Why: fmt.Sprintf("failed to parse resource with `kind: ConfigMap` as YAML: %s",
+								Why: fmt.Sprintf("failed to parse resource with `kind: ConfigMap` as JSON: %s",
 									err.Error()),
 								FixInstructions: "ensure all `v1.ConfigMap` resources follow the schema",
 							})
@@ -439,7 +439,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						configMap.Data = newData
 
 						// {{{4 Save substituted parameters
-						subBytes, err := yaml.Marshal(configMap)
+						subBytes, err := json.Marshal(configMap)
 						if err != nil {
 							errs = append(errs, ParseError{
 								What: whatDir,

@@ -32,7 +32,7 @@ Schema:
 - `tags` (List[String])
 - `verification_status` (String): One of `pending`, `verifying`, `good`, `bad`
 - `github_url` (String)
-- `deployment` (Object): Deployment details, not returned by the API. Has keys:
+- `deployment` (Object): Deployment details. Has keys:
   - `resources` (List[String]): Each list entry holds the JSON for one
 	deployment resource
   - `parameterized_resources` (List[String]): Same as `resources` except
@@ -165,7 +165,7 @@ Response:
 - `categories` (List[String])
 
 ### Get Deployment File
-`GET /apps/<app_id>/version/<version>/deployment.yaml`  
+`GET /apps/<app_id>/version/<version>/deployment.json`  
 
 Get file with all an app's deployment resources.
 
@@ -174,7 +174,7 @@ Request:
 - `app_id` (String): ID of app
 - `version` (String): Version of app
 
-Response: YAML text of deployment resources
+Response: JSON text of deployment resources
 
 ### Get Deployment Script
 `GET /apps/<app_id>/version/<version>/deploy.sh`
@@ -238,6 +238,6 @@ This script will allow users to tweak the values of `ConfigMap` and `Secret`
 resources before applying them to a Kubernetes cluster.  
 
 To facilitate this process the script will be automatically generated on the
-server. It will contain a heredoc with the app's deployment YAML. For each of
+server. It will contain a heredoc with the app's deployment JSON. For each of
 the `ConfigMap` or `Secret` keys it will place a variable. It will prompt the
 user for the value of this variable, or use the default value.
