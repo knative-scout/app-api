@@ -338,6 +338,10 @@ func main() {
 		JobRunner: jobRunner,
 	}).Methods("POST")
 
+	router.Handle("/apps/id/{id}/deployment-instructions", handlers.DeployInstructionsHandler{
+		baseHandler.GetChild("deploy-instructions"),
+	}).Methods("GET")
+
 	router.Handle("/nsearch", handlers.SmartSearchHandler{
 		baseHandler.GetChild("nsearch"),
 	}).Methods("GET")
