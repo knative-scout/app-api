@@ -278,17 +278,17 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				// {{{3 Get content of each file
 				filesTxt := []string{}
 				for _, deployContent := range dirContents {
-					if *content.Type == "dir" {
+					if *deployContent.Type == "dir" {
 						continue
 					}
 
 					txt, err := p.GetFileContent(
 						fmt.Sprintf("%s/deployment/%s",
-							id, *content.Name))
+							id, *deployContent.Name))
 					if err != nil {
 						errs = append(errs, ParseError{
 							What: fmt.Sprintf("`%s/deployment/%s`"+
-								"file", id, *content.Name),
+								"file", id, *deployContent.Name),
 							Why: "failed to get content of file "+
 								"using the GitHub API, an error "+
 								"response was returned",
@@ -305,12 +305,12 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 
 				for _, fileTxt := range filesTxt {
 					lines := []string{}
-					for _, line := strings.Split(fileTxt, "\n") {
+					for _, line := range strings.Split(fileTxt, "\n") {
 						if strings.ReplaceAll(line, " ", "") == "---" {
 							if len(lines) > 0 {
 								resourcesTxt = append(resourcesTxt,
 									strings.Join(lines, "\n"))
-								lines := []string{}
+								lines = []string{}
 							}
 						} else {
 							lines = append(lines, line)
@@ -329,7 +329,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 
 				for _, resourceTxt := range resourcesTxt {
 					// {{{3 Get type meta
-					var rawYAML interface{}
+					var rawYAML map[string]interface{}
 					if err := yaml.Unmarshal([]byte(resourceTxt), &rawYAML); err != nil {
 						errs = append(errs, ParseError{
 							What: whatDir,
@@ -340,42 +340,36 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						continue
 					}
 
-					asJSON, err := json.Marshal(rawYAML)
-					if err != nil {
+					var typeMeta v1Meta.TypeMeta
+					if err := yaml.Unmarshal([]byte(resourceTxt), &typeMeta); err != nil {
 						errs = append(errs, ParseError{
 							What: whatDir,
-							Why: fmt.Sprintf("failed to convert deployment file into JSON: %s",
+							Why: fmt.Sprintf("failed to parse a resource's Kubernetes type information as YAML: %s",
 								err.Error()),
-							FixInstructions: "check deployment files YAML syntax",
+							FixInstructions: "ensure all deployment resources have an `apiVersion` and `kind` field and proper YAML formatting",
 						})
 						continue
 					}
 
-					var typeMeta v1Meta.TypeMeta
-					if err := json.Unmarshal(asJSON, &typeMeta); err != nil {
-						errs = append(errs, ParseError{
-							What: whatDir,
-							Why: fmt.Sprintf("failed to parse deployment resource type metadata: %s",
-								err.Error()),
-							FixInstructions: "check deployment files YAML syntax",
-						})
+					if typeMeta.APIVersion != "v1" {
+						parameterizedTxt = append(parameterizedTxt, resourceTxt)
 						continue
 					}
 
 					// {{{3 Determine if we should parameterize it
-					if typeMeta.APIVersion == "v1" && typeMeta.Kind == "Secret" {
+					if typeMeta.Kind == "Secret" {
 						// {{{4 Parse as Secret
 						var secret v1Core.Secret
-						if err := json.Unmarshal(asJSON, &secret); err != nil {
+						if err := yaml.Unmarshal([]byte(resourceTxt), &secret); err != nil {
 							errs = append(errs, ParseError{
-								WhatDir: whatDir,
-								Why: fmt.Sprintf("failed to parse deployment v1.Secret: %s",
+								What: whatDir,
+								Why: fmt.Sprintf("failed to parse Kubernetes resource with `kind: Secret` as YAML: %s",
 									err.Error()),
-								FixInstructions: "check deployment files YAML syntax",
+								FixInstructions: "ensure all `Secret` resources follow the `v1.Secret` schema",
 							})
 							continue
 						}
-
+					
 						// {{{4 Substitute parameters
 						newData := map[string][]byte{}
 						for key, data := range secret.Data {
@@ -399,7 +393,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						subBytes, err := yaml.Marshal(secret)
 						if err != nil {
 							errs = append(errs, ParseError{
-								WhatDir: whatDir,
+								What: whatDir,
 								Why: fmt.Sprintf("failed to represent deployment v1.Secret as YAML: %s",
 									err.Error()),
 								FixInstructions: "check deployment files YAML syntax",
@@ -407,21 +401,21 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 							continue
 						}
 						parameterizedTxt = append(parameterizedTxt, string(subBytes))
-					} else if typeMeta.APIVersion == "v1" && typeMeta.Kind == "ConfigMap" {
+					} else if typeMeta.Kind == "ConfigMap" {
 						// {{{4 Parse as ConfigMap
 						var configMap v1Core.ConfigMap
-						if err := json.Unmarshal(asJSON, &configMap); err != nil {
+						if err := yaml.Unmarshal([]byte(resourceTxt), &configMap); err != nil {
 							errs = append(errs, ParseError{
-								WhatDir: whatDir,
-								Why: fmt.Sprintf("failed to parse deployment v1.ConfigMap: %s",
+								What: whatDir,
+								Why: fmt.Sprintf("failed to parse resource with `kind: ConfigMap` as YAML: %s",
 									err.Error()),
-								FixInstructions: "check deployment files YAML syntax",
+								FixInstructions: "ensure all `v1.ConfigMap` resources follow the schema",
 							})
 							continue
 						}
 
 						// {{{4 Substitute parameters
-						newData := map[string][]byte{}
+						newData := map[string]string{}
 						for key, data := range configMap.Data {
 							param := models.AppDeployParameter{
 								SubstitutionVariable: fmt.Sprintf("config_map_%s_%s",										
@@ -429,12 +423,12 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 									invalidBashVarChars.ReplaceAllString(key, "_")),
 								DisplayName: fmt.Sprintf("\"%s\" key in \"%\" config map",
 									key, configMap.Name),
-								DefaultValue: string(data),
+								DefaultValue: data,
 								RequiresBase64: true,
 							}
 							params = append(params, param)
 							
-							newData[key] = []byte(fmt.Sprintf("$%s", param.SubstitutionVariable))
+							newData[key] = fmt.Sprintf("$%s", param.SubstitutionVariable)
 						}
 
 						configMap.Data = newData
@@ -443,7 +437,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						subBytes, err := yaml.Marshal(configMap)
 						if err != nil {
 							errs = append(errs, ParseError{
-								WhatDir: whatDir,
+								What: whatDir,
 								Why: fmt.Sprintf("failed to represent deployment v1.ConfigMap as YAML: %s",
 									err.Error()),
 								FixInstructions: "check deployment files YAML syntax",
@@ -451,8 +445,6 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 							continue
 						}
 						parameterizedTxt = append(parameterizedTxt, string(subBytes))
-					} else {
-						parameterizedTxt = append(parameterizedTxt, resourceTxt)
 					}
 				}
 
@@ -483,7 +475,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 	if len(errs) > 0 {
 		return nil, errs
 	}
-	
+
 	err = validation.ValidateApp(app)
 
 	// {{{2 Convert validation errors to ParseErrors
@@ -505,7 +497,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				"Description": "`README.md` file",
 				"ScreenshotURLs": "`screenshots` directory",
 				"LogoURL": "`logo.png` file",
-				"DeploymentFileURLs": "`deployment` directory",
+				"Deployment": "`deployment` directory",
 			}
 
 			// whyMap maps validation tags to user readable reasons for the validation

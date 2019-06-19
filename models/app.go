@@ -20,7 +20,7 @@ const VerificationStatusBad VerStatusT = "bad"
 // AppDeployParameter holds information about a parameter in an app's deployment resources
 type AppDeployParameter struct {
 	// SubstitutionVariable is the variable which will hold the parameter's value
-	SubstitutionVariable `json:"substitution_variable" bson:"substitution_variable" validate:"required"`
+	SubstitutionVariable string `json:"substitution_variable" bson:"substitution_variable" validate:"required"`
 
 	// DisplayName is a user friendly name to describe the parameter
 	DisplayName string `json:"display_name" bson:"display_name" validate:"required"`
@@ -89,9 +89,6 @@ type App struct {
 
 	// Deployment datan
 	Deployment AppDeployment `json:"deployment" bson:"deployment" validate:"required"`
-
-	// DeploymentFileURLs are links to the Knative deployment resource files
-	DeploymentFileURLs []string `json:"deployment_file_urls" bson:"deployment_file_urls" validate:"required"`
 
 	// Version is the semantic version of the app
 	Version string `json:"version" bson:"version" validate:"required"`

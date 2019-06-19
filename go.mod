@@ -23,4 +23,6 @@ require (
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	gopkg.in/go-playground/validator.v9 v9.29.0
 	gopkg.in/yaml.v2 v2.2.2
+	k8s.io/api v0.0.0-20190615205754-1d1b8b084b30
+	k8s.io/apimachinery v0.0.0-20190612125636-6a5db36e93ad
 )
