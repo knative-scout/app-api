@@ -180,7 +180,7 @@ Response:
 - `categories` (List[String])
 
 ### Get Deployment File
-`GET /apps/<app_id>/deployment.json`  
+`GET /apps/id/<app_id>/deployment.json`  
 
 Get file with all an app's deployment resources.
 
@@ -191,7 +191,7 @@ Request:
 Response: JSON text of deployment resources
 
 ### Get Deployment Script
-`GET /apps/<app_id>/deploy.sh`
+`GET /apps/id/<app_id>/deploy.sh`
 
 Get deployment script for version of app.  
 See [deployment script](#deployment-script) for design details.
@@ -203,7 +203,7 @@ Request:
 Response: Bash script text
 
 ### Get Deployment Instructions
-`GET /apps/<app_id>/deployment-instructions`
+`GET /apps/id/<app_id>/deployment-instructions`
 
 Get instructions for how user should deploy application.
 

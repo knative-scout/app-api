@@ -16,8 +16,7 @@ type AppByIDHandler struct {
 }
 // ServeHTTP implements http.Handler
 func (h AppByIDHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
-	//gets all the optional parametres passed in the URL
+	// Gets all the optional parametres passed in the URL
 	vars := mux.Vars(r)
 
 	id := vars["id"]
