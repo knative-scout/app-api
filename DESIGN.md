@@ -5,6 +5,20 @@ API design.
 - [Overview](#overview)
 - [Data Model](#data-model)
 - [Endpoints](#endpoints)
+  - [App Endpoints](#app-endpoints)
+    - [Search Apps](#search-apps)
+	- [Natural Search](#natural-search)
+	- [Get App By ID](#get-app-by-id)
+	- [App Pull Request Webhook](#app-pull-request-webhook)
+	- [Search Tags](#search-tags)
+	- [Search Categories](#search-categories)
+	- [Get Deployment File](#get-deployment-file)
+	- [Get Deployment Script](#get-deployment-script)
+	- [Get Deployment Instructions](#get-deployment-instructions)
+  - [Resource Endpoints](#resource-endpoints)
+	- [Search Resources](#search-resources)
+  - [Meta Endpoints](#meta-endpoints)
+	- [Health Check](#health-check)
 - [Deployment Script](#deployment-script)
 
 # Overview
@@ -125,7 +139,7 @@ Response:
 
 - `app` ([App Model](#app-model))
 
-### App Pull Request Webhook Endpoint
+### App Pull Request Webhook
 `POST /apps/webhook`
 
 GitHub will make a request to this endpoint every time a new pull request is 
@@ -166,19 +180,18 @@ Response:
 - `categories` (List[String])
 
 ### Get Deployment File
-`GET /apps/<app_id>/version/<version>/deployment.json`  
+`GET /apps/<app_id>/deployment.json`  
 
 Get file with all an app's deployment resources.
 
 Request:
 
 - `app_id` (String): ID of app
-- `version` (String): Version of app
 
 Response: JSON text of deployment resources
 
 ### Get Deployment Script
-`GET /apps/<app_id>/version/<version>/deploy.sh`
+`GET /apps/<app_id>/deploy.sh`
 
 Get deployment script for version of app.  
 See [deployment script](#deployment-script) for design details.
@@ -186,10 +199,24 @@ See [deployment script](#deployment-script) for design details.
 Request:
 
 - `app_id` (String): ID of app
-- `version` (String): Version of app
 
 Response: Bash script text
 
+### Get Deployment Instructions
+`GET /apps/<app_id>/deployment-instructions`
+
+Get instructions for how user should deploy application.
+
+Request:
+
+- `app_id` (String): ID of app
+
+Response:
+
+- `instructions` (String): Deploy instructions, contains newlines,
+  markdown formatted
+
+## Resource Endpoints
 ### Search Resources
 `GET /resources?query=<query>&categories=<categories>`
 
@@ -205,18 +232,6 @@ Request:
 Response:
 
 - `resource` (List[[Resource Model](#resource-model)])
-
-## User Endpoints
-`GET /users/login`
-
-Login via OpenShift.
-
-Request: None
-
-Response:
-
-- `authentication_token` (String): Use this to authenticate with the App API in
-  the future
 
 ## Meta Endpoints
 ### Health Check
