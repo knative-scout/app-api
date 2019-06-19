@@ -52,7 +52,7 @@ func (j UpdateAppsJob) Do(data []byte) error {
 
 	for _, appID := range appIDs {
 		app, errs := repoParser.GetApp(appID)
-		if err != nil {
+		if errs != nil {
 			errStrs := []string{}
 			for _, err := range errs {
 				errStrs = append(errStrs, err.Error())
