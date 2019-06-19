@@ -356,13 +356,8 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						continue
 					}
 
-					if typeMeta.APIVersion != "v1" {
-						paramdResources = append(paramdResources, resourceBytes)
-						continue
-					}
-
 					// {{{3 Determine if we should parameterize it
-					if typeMeta.Kind == "Secret" {
+					if typeMeta.APIVersion == "v1" && typeMeta.Kind == "Secret" {
 						// {{{4 Parse as Secret
 						var secret v1Core.Secret
 						if err := json.Unmarshal(resourceBytes, &secret); err != nil {
@@ -406,7 +401,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 							continue
 						}
 						paramdResources = append(paramdResources, subBytes)
-					} else if typeMeta.Kind == "ConfigMap" {
+					} else if typeMeta.APIVersion == "v1" && typeMeta.Kind == "ConfigMap" {
 						// {{{4 Parse as ConfigMap
 						var configMap v1Core.ConfigMap
 						if err := json.Unmarshal(resourceBytes, &configMap); err != nil {
@@ -429,7 +424,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 								DisplayName: fmt.Sprintf("\"%s\" key in \"%s\" ConfigMap",
 									key, configMap.Name),
 								DefaultValue: data,
-								RequiresBase64: true,
+								RequiresBase64: false,
 							}
 							params = append(params, param)
 							
@@ -450,11 +445,13 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 							continue
 						}
 						paramdResources = append(paramdResources, subBytes)
+					} else {
+						paramdResources = append(paramdResources, resourceBytes)
 					}
 				}
 
 				resourcesStr := []string{}
-				for _, resource := range resources {
+				for _, resource := range resourcesJSON {
 					resourcesStr = append(resourcesStr, string(resource))
 				}
 
