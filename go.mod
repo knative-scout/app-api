@@ -14,6 +14,7 @@ require (
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-github/v25 v25.1.3
 	github.com/google/go-github/v26 v26.0.2
+	github.com/google/uuid v1.0.0
 	github.com/gorilla/mux v1.7.2
 	github.com/icza/dyno v0.0.0-20180601094105-0c96289f9585
 	github.com/kelseyhightower/envconfig v1.4.0
