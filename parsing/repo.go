@@ -12,7 +12,7 @@ import (
 	"github.com/kscout/serverless-registry-api/validation"
 	
 	"github.com/google/go-github/v26/github"
-	"gopkg.in/yaml.v2"
+	"github.com/ghodss/yaml"
 	"gopkg.in/go-playground/validator.v9"
 	v1Meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1Core "k8s.io/api/core/v1"
@@ -191,7 +191,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				
 				// {{{2 Parse as YAML
 				var manifest models.AppManifestFile
-				err = yaml.UnmarshalStrict([]byte(txt), &manifest)
+				err = yaml.Unmarshal([]byte(txt), &manifest)
 				if err != nil {
 					errs = append(errs, ParseError{
 						What: whatFile,
@@ -301,15 +301,15 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				}
 
 				// {{{3 Split content up by resource
-				resourcesTxt := []string{}
+				resources := [][]byte{}
 
 				for _, fileTxt := range filesTxt {
 					lines := []string{}
 					for _, line := range strings.Split(fileTxt, "\n") {
 						if strings.ReplaceAll(line, " ", "") == "---" {
 							if len(lines) > 0 {
-								resourcesTxt = append(resourcesTxt,
-									strings.Join(lines, "\n"))
+								resources = append(resources,
+									[]byte(strings.Join(lines, "\n")))
 								lines = []string{}
 							}
 						} else {
@@ -318,30 +318,35 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					}
 					
 					if len(lines) > 0 {
-						resourcesTxt = append(resourcesTxt,
-							strings.Join(lines, "\n"))
+						resources = append(resources,
+							[]byte(strings.Join(lines, "\n")))
 					}
+				}
+
+				// {{{2 Convert all YAML into JSON
+				resourcesJSON := [][]byte{}
+
+				for _, resourceYAML := range resources {
+					jsonBytes, err := yaml.YAMLToJSON(resourceYAML)
+					if err != nil {
+						errs = append(errs, ParseError{
+							What: whatDir,
+							Why: "failed to convert deployment resource into JSON",
+							InternalError: err,
+						})
+						continue
+					}
+					
+					resourcesJSON = append(resourcesJSON, jsonBytes)
 				}
 
 				// {{{2 Parse each resource and determine if can be paramterized
 				params := []models.AppDeployParameter{}
-				parameterizedTxt := []string{}
+				paramdResources := [][]byte{}
 
-				for _, resourceTxt := range resourcesTxt {
-					// {{{3 Get type meta
-					var rawYAML map[string]interface{}
-					if err := yaml.Unmarshal([]byte(resourceTxt), &rawYAML); err != nil {
-						errs = append(errs, ParseError{
-							What: whatDir,
-							Why: fmt.Sprintf("failed to parse deployment file content as YAML: %s",
-								err.Error()),
-							FixInstructions: "check deployment files YAML syntax",
-						})
-						continue
-					}
-
+				for _, resourceBytes := range resourcesJSON {
 					var typeMeta v1Meta.TypeMeta
-					if err := yaml.Unmarshal([]byte(resourceTxt), &typeMeta); err != nil {
+					if err := yaml.Unmarshal(resourceBytes, &typeMeta); err != nil {
 						errs = append(errs, ParseError{
 							What: whatDir,
 							Why: fmt.Sprintf("failed to parse a resource's Kubernetes type information as YAML: %s",
@@ -352,7 +357,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					}
 
 					if typeMeta.APIVersion != "v1" {
-						parameterizedTxt = append(parameterizedTxt, resourceTxt)
+						paramdResources = append(paramdResources, resourceBytes)
 						continue
 					}
 
@@ -360,7 +365,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					if typeMeta.Kind == "Secret" {
 						// {{{4 Parse as Secret
 						var secret v1Core.Secret
-						if err := yaml.Unmarshal([]byte(resourceTxt), &secret); err != nil {
+						if err := yaml.Unmarshal(resourceBytes, &secret); err != nil {
 							errs = append(errs, ParseError{
 								What: whatDir,
 								Why: fmt.Sprintf("failed to parse Kubernetes resource with `kind: Secret` as YAML: %s",
@@ -377,7 +382,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 								SubstitutionVariable: fmt.Sprintf("secret_%s_%s",										
 									invalidBashVarChars.ReplaceAllString(secret.Name, "_"),
 									invalidBashVarChars.ReplaceAllString(key, "_")),
-								DisplayName: fmt.Sprintf("\"%s\" key in \"%\" secret",
+								DisplayName: fmt.Sprintf("\"%s\" key in \"%s\" Secret",
 									key, secret.Name),
 								DefaultValue: string(data),
 								RequiresBase64: true,
@@ -400,11 +405,11 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 							})
 							continue
 						}
-						parameterizedTxt = append(parameterizedTxt, string(subBytes))
+						paramdResources = append(paramdResources, subBytes)
 					} else if typeMeta.Kind == "ConfigMap" {
 						// {{{4 Parse as ConfigMap
 						var configMap v1Core.ConfigMap
-						if err := yaml.Unmarshal([]byte(resourceTxt), &configMap); err != nil {
+						if err := yaml.Unmarshal(resourceBytes, &configMap); err != nil {
 							errs = append(errs, ParseError{
 								What: whatDir,
 								Why: fmt.Sprintf("failed to parse resource with `kind: ConfigMap` as YAML: %s",
@@ -421,7 +426,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 								SubstitutionVariable: fmt.Sprintf("config_map_%s_%s",										
 									invalidBashVarChars.ReplaceAllString(configMap.Name, "_"),
 									invalidBashVarChars.ReplaceAllString(key, "_")),
-								DisplayName: fmt.Sprintf("\"%s\" key in \"%\" config map",
+								DisplayName: fmt.Sprintf("\"%s\" key in \"%s\" ConfigMap",
 									key, configMap.Name),
 								DefaultValue: data,
 								RequiresBase64: true,
@@ -444,13 +449,22 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 							})
 							continue
 						}
-						parameterizedTxt = append(parameterizedTxt, string(subBytes))
+						paramdResources = append(paramdResources, subBytes)
 					}
 				}
 
+				resourcesStr := []string{}
+				for _, resource := range resources {
+					resourcesStr = append(resourcesStr, string(resource))
+				}
+
+				paramdResourcesStr := []string{}
+				for _, resource := range paramdResources {
+					paramdResourcesStr = append(paramdResourcesStr, string(resource))
+				}
 				app.Deployment = models.AppDeployment{
-					ResourceYAML: resourcesTxt,
-					ParameterizedYAML: parameterizedTxt,
+					Resources: resourcesStr,
+					ParameterizedResources: paramdResourcesStr,
 					Parameters: params,
 				}
 			}

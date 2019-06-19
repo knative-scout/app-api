@@ -35,13 +35,13 @@ type AppDeployParameter struct {
 
 // AppDeployment holds deployment information about an app
 type AppDeployment struct {
-	// ResourceYAML is the raw YAML for each deployment resource
-	ResourceYAML []string `json:"resource_yaml" bson:"resource_yaml" validate:"required"`
+	// Resources is the raw JSON for each deployment resource
+	Resources []string `json:"resources" bson:"resources" validate:"required"`
 
-	// ParameterizedYAML is the YAML for each deployment resource, except values in
+	// ParameterizedResources is the JSON for each deployment resource, except values in
 	// ConfigMap and Secret resources are replaced with their
 	// AppDeployParameter.SubstituionVariable value
-	ParameterizedYAML []string `json:"parameterized_yaml" bson:"parameterized_yaml" validate:"required"`
+	ParameterizedResources []string `json:"parameterized_resources" bson:"parameterized_resources" validate:"required"`
 
 	// Parameters holds metadata about the parameters in PrameterizedYAML
 	Parameters []AppDeployParameter `json:"parameters" bson:"parameters" validate:"required"`
@@ -88,7 +88,7 @@ type App struct {
 	GitHubURL string `json:"github_url" bson:"github_url" validate:"required"`
 
 	// Deployment datan
-	Deployment AppDeployment `json:"deployment" bson:"deployment" validate:"required"`
+	Deployment AppDeployment `json:"-" bson:"deployment" validate:"required"`
 
 	// Version is the semantic version of the app
 	Version string `json:"version" bson:"version" validate:"required"`
