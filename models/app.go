@@ -17,6 +17,36 @@ const VerificationStatusGood VerStatusT = "good"
 // VerificationStatusBad indicates the app has been processed and is not safe
 const VerificationStatusBad VerStatusT = "bad"
 
+// AppDeployParameter holds information about a parameter in an app's deployment resources
+type AppDeployParameter struct {
+	// SubstitutionVariable is the variable which will hold the parameter's value
+	SubstitutionVariable string `json:"substitution_variable" bson:"substitution_variable" validate:"required"`
+
+	// DisplayName is a user friendly name to describe the parameter
+	DisplayName string `json:"display_name" bson:"display_name" validate:"required"`
+
+	// DefaultValue of parameter
+	DefaultValue string `json:"default_value" bson:"default_value" validate:"required"`
+
+	// RequiresBase64 indicates if the parameter should be encoded in base64 before being
+	// placed in the template
+	RequiresBase64 bool `json:"requires_base64" bson:"requires_base64" validate:"required"`
+}
+
+// AppDeployment holds deployment information about an app
+type AppDeployment struct {
+	// Resources is the raw JSON for each deployment resource
+	Resources []string `json:"resources" bson:"resources" validate:"required"`
+
+	// ParameterizedResources is the JSON for each deployment resource, except values in
+	// ConfigMap and Secret resources are replaced with their
+	// AppDeployParameter.SubstituionVariable value
+	ParameterizedResources []string `json:"parameterized_resources" bson:"parameterized_resources" validate:"required"`
+
+	// Parameters holds metadata about the parameters in PrameterizedYAML
+	Parameters []AppDeployParameter `json:"parameters" bson:"parameters" validate:"required"`
+}
+
 // App is a serverless application from the repository
 // Stores the json file format of the response
 type App struct {
@@ -57,8 +87,8 @@ type App struct {
 	// GitHubURL is a link to the GitHub files for the app
 	GitHubURL string `json:"github_url" bson:"github_url" validate:"required"`
 
-	// DeploymentFileURLs are links to the Knative deployment resource files
-	DeploymentFileURLs []string `json:"deployment_file_urls" bson:"deployment_file_urls" validate:"required"`
+	// Deployment datan
+	Deployment AppDeployment `json:"deployment" bson:"deployment" validate:"required"`
 
 	// Version is the semantic version of the app
 	Version string `json:"version" bson:"version" validate:"required"`

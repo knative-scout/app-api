@@ -5,6 +5,7 @@ API design.
 - [Overview](#overview)
 - [Data Model](#data-model)
 - [Endpoints](#endpoints)
+- [Deployment Script](#deployment-script)
 
 # Overview
 HTTP RESTful API.  
@@ -31,23 +32,23 @@ Schema:
 - `tags` (List[String])
 - `verification_status` (String): One of `pending`, `verifying`, `good`, `bad`
 - `github_url` (String)
-- `deployment_file_urls` (List[String])
+- `deployment` (Object): Deployment details. Has keys:
+  - `resources` (List[String]): Each list entry holds the JSON for one
+	deployment resource
+  - `parameterized_resources` (List[String]): Same as `resources` except
+	values in `ConfigMap` and `Secret` resources are replaced with bash 
+	variable names from `parameters`
+  - `parameters` (List[Object]): Information about parameters in
+	`parameterized_resources`, has keys:
+     - `substitution_variable` (String): Name of variable substituted for the
+	   value in `parameterized_resources`
+	 - `display_name` (String): Name of variable to display to user
+	 - `default_value` (String): Value that existed before was parameterized
+	 - `requires_base64` (Boolean): Indicates if the value must be base64 
+		 encoded in the template
 - `version` (String)
 - `author` (String)
 - `maintainer` (String)
-
-## Submission Model
-`submissions` collection.
-
-[Documentation of schema fields](https://godoc.org/github.com/kscout/serverless-registry-api/models#Submission)
-
-Schema:
-
-- `pr_number` (Integer)
-- `apps` (List[Object]):
-  - `app` ([App Model](#app-model))
-  - `verification_status` (Object):
-	- `format_correct` (Boolean)
 
 ## Resource Model
 `resource` collection.
@@ -163,6 +164,31 @@ Response:
 
 - `categories` (List[String])
 
+### Get Deployment File
+`GET /apps/<app_id>/version/<version>/deployment.json`  
+
+Get file with all an app's deployment resources.
+
+Request:
+
+- `app_id` (String): ID of app
+- `version` (String): Version of app
+
+Response: JSON text of deployment resources
+
+### Get Deployment Script
+`GET /apps/<app_id>/version/<version>/deploy.sh`
+
+Get deployment script for version of app.  
+See [deployment script](#deployment-script) for design details.
+
+Request:
+
+- `app_id` (String): ID of app
+- `version` (String): Version of app
+
+Response: Bash script text
+
 ### Search Resources
 `GET /resources?query=<query>&categories=<categories>`
 
@@ -191,47 +217,6 @@ Response:
 - `authentication_token` (String): Use this to authenticate with the App API in
   the future
 
-## Cluster Endpoints
-### List Clusters
-`GET /clusters`
-
-Lists available OpenShift clusters.
-
-Authentication required.
-
-Request: None
-
-Response:
-
-- `clusters` (List[Object]): Objects with keys
-  - `id` (String)
-  - `name` (String)
-
-### Deploy To Cluster
-`POST /clusters/<id>/deploy?app_id=<app_id>`
-
-Deploy application to OpenShift cluster.
-
-Request:
-
-- `id` (String): ID of OpenShift cluster
-- `app_id` (String): ID of app to deploy
-
-Response: None
-
-### Get Deploy Instructions
-`GET /clusters/deploy_instructions?app_id=<app_id>`
-
-Get manual deploy instructions for app.
-
-Request:
-
-- `app_id` (String): ID of app to return instructions for
-
-Response:
-
-- `instructions` (String)
-
 ## Meta Endpoints
 ### Health Check
 `GET /health`
@@ -241,3 +226,18 @@ Used to determine if server is operating fully.
 Request: None
 
 Response: None
+
+# Deployment Script
+A one line deployment command will be provided to users in the form:
+
+```
+curl -L https://api.kscout.io/apps/<app_id>/version/<version>/deploy.sh | bash
+```
+
+This script will allow users to tweak the values of `ConfigMap` and `Secret`
+resources before applying them to a Kubernetes cluster.  
+
+To facilitate this process the script will be automatically generated on the
+server. It will contain a heredoc with the app's deployment JSON. For each of
+the `ConfigMap` or `Secret` keys it will place a variable. It will prompt the
+user for the value of this variable, or use the default value.
