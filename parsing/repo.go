@@ -13,6 +13,7 @@ import (
 	
 	"github.com/google/go-github/v26/github"
 	"github.com/ghodss/yaml"
+	"github.com/google/uuid"
 	"gopkg.in/go-playground/validator.v9"
 	v1Meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1Core "k8s.io/api/core/v1"
@@ -374,9 +375,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						newData := map[string][]byte{}
 						for key, data := range secret.Data {
 							param := models.AppDeployParameter{
-								SubstitutionVariable: fmt.Sprintf("secret_%s_%s",										
-									invalidBashVarChars.ReplaceAllString(secret.Name, "_"),
-									invalidBashVarChars.ReplaceAllString(key, "_")),
+								Substitution: uuid.New().String(),
 								DisplayName: fmt.Sprintf("\"%s\" key in \"%s\" Secret",
 									key, secret.Name),
 								DefaultValue: string(data),
@@ -384,7 +383,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 							}
 							params = append(params, param)
 							
-							newData[key] = []byte(fmt.Sprintf("$%s", param.SubstitutionVariable))
+							newData[key] = []byte(fmt.Sprintf("%s", param.Substitution))
 						}
 
 						secret.Data = newData
@@ -418,9 +417,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						newData := map[string]string{}
 						for key, data := range configMap.Data {
 							param := models.AppDeployParameter{
-								SubstitutionVariable: fmt.Sprintf("config_map_%s_%s",										
-									invalidBashVarChars.ReplaceAllString(configMap.Name, "_"),
-									invalidBashVarChars.ReplaceAllString(key, "_")),
+								Substitution: uuid.New().String(),
 								DisplayName: fmt.Sprintf("\"%s\" key in \"%s\" ConfigMap",
 									key, configMap.Name),
 								DefaultValue: data,
@@ -428,7 +425,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 							}
 							params = append(params, param)
 							
-							newData[key] = fmt.Sprintf("$%s", param.SubstitutionVariable)
+							newData[key] = fmt.Sprintf("%s", param.Substitution)
 						}
 
 						configMap.Data = newData
@@ -463,6 +460,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					Resources: resourcesStr,
 					ParameterizedResources: paramdResourcesStr,
 					Parameters: params,
+					DeployScript: "PLACE DEPLOY SCRIPT HERE",
 				}
 			}
 		}

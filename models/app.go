@@ -19,8 +19,8 @@ const VerificationStatusBad VerStatusT = "bad"
 
 // AppDeployParameter holds information about a parameter in an app's deployment resources
 type AppDeployParameter struct {
-	// SubstitutionVariable is the variable which will hold the parameter's value
-	SubstitutionVariable string `json:"substitution_variable" bson:"substitution_variable" validate:"required"`
+	// Substitution is the value which should be substitured for the parameter's value
+	Substitution string `json:"substitution" bson:"substitution" validate:"required"`
 
 	// DisplayName is a user friendly name to describe the parameter
 	DisplayName string `json:"display_name" bson:"display_name" validate:"required"`
@@ -45,6 +45,9 @@ type AppDeployment struct {
 
 	// Parameters holds metadata about the parameters in PrameterizedYAML
 	Parameters []AppDeployParameter `json:"parameters" bson:"parameters" validate:"required"`
+
+	// DeployScript is a custom deployment script for the app
+	DeployScript string `json:"deploy_script" bson:"deploy_script" validate:"required"`
 }
 
 // App is a serverless application from the repository
