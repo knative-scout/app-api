@@ -1,6 +1,9 @@
 package parsing
 
 import (
+	"io/ioutil"
+	"log"
+	"os"
 	"strings"
 	"fmt"
 	"context"
@@ -456,11 +459,14 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				for _, resource := range paramdResources {
 					paramdResourcesStr = append(paramdResourcesStr, string(resource))
 				}
+
+				deploymentScript := CreateDeploymentScript(id, params, strings.Join(paramdResourcesStr, "\n"))
+
 				app.Deployment = models.AppDeployment{
 					Resources: resourcesStr,
 					ParameterizedResources: paramdResourcesStr,
 					Parameters: params,
-					DeployScript: "PLACE DEPLOY SCRIPT HERE",
+					DeployScript: deploymentScript,
 				}
 			}
 		}
@@ -571,4 +577,83 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 	}
 
 	return &app, nil
+}
+
+
+func CreateDeploymentScript(id string, params []models.AppDeployParameter, ymlfile string) string {
+
+	//opening deploy.sh file
+	file, err := os.Open("parsing/deploy.sh")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			panic(fmt.Errorf("unable to close file : %s",err))
+		}
+	}()
+
+	script, err := ioutil.ReadAll(file)
+	bashrc := string(script)
+
+	secrets := "\n"+
+	"ID=\"{{param.id}}\"\n"+
+	"KEY=\"{{param.key}}\"\n"+
+	"DFLT=\"{{param.dflt}}\"\n"+
+	"BASE64=\"{{param.base64}}\"\n"+
+
+	"echo  #new line\n"+
+	"echo \"Default Value for $KEY is '$DFLT'\"\n"+
+	"read -p \"Do you want to change it ? (y/n): \" choice\n"+
+
+	"case \"$choice\" in\n"+
+	"y|Y|yes|YES|Yes )\n"+
+	"read -p \"Enter new value for $KEY : \" value\n"+
+	"if [[ \"$BASE64\" == \"Y\" ]]\n"+
+	"then\n"+
+	"value=$(echo \"${value}\" | base64)\n"+
+	"else\n"+
+	"value=\"${value}\"\n"+
+	"fi\n"+
+	"SED_DATA=\"$SED_DATA ; s/$ID/$value/\" ;;\n"+
+	"n|N|no|NO|No )\n"+
+	"if [[ \"$BASE64\" == \"Y\" ]]\n"+
+	"then\n"+
+	"DFLT=\"${value}\"\n"+
+	"else\n"+
+	"DFLT=$(echo \"${DFLT}\" | base64 -d)\n"+
+	"fi\n"+
+	"SED_DATA=\"$SED_DATA ; s/$ID/$DFLT/\";;\n"+
+	"* ) echo \"invalid input, Please run the script again\";;\n"+
+	"\n"
+
+	secretsRes:= ""
+
+	for _,parameter := range params{
+		ID := parameter.Substitution
+		KEY := parameter.DisplayName
+		DFLT := parameter.DefaultValue
+		BASE64 := "N"
+		if parameter.RequiresBase64{
+			BASE64 = "Y"
+		}
+
+
+
+		tempSec := secrets
+		tempSec = strings.ReplaceAll(tempSec, "{{param.id}}", ID)
+		tempSec = strings.ReplaceAll(tempSec, "{{param.key}}", KEY)
+		tempSec = strings.ReplaceAll(tempSec, "{{param.dflt}}", DFLT)
+		tempSec = strings.ReplaceAll(tempSec, "{{param.base64}}", BASE64)
+
+		secretsRes = secretsRes + tempSec
+
+	}
+
+	bashrc = strings.ReplaceAll(bashrc, "{{{replacement.script}}}", secretsRes)
+	bashrc = strings.ReplaceAll(bashrc, "{{{yaml.file}}}", ymlfile)
+
+
+	return bashrc
 }

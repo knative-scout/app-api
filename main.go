@@ -346,6 +346,10 @@ func main() {
 		baseHandler.GetChild("nsearch"),
 	}).Methods("GET")
 
+	router.Handle("/apps/deploy/{appID}", handlers.AppsDeployHandler{
+		baseHandler.GetChild("appsDeploy"),
+	}).Methods("GET")
+
 	// !!! Must always be last !!!
 	router.Handle("/", handlers.PreFlightOptionsHandler{
 		baseHandler.GetChild("pre-flight-options"),

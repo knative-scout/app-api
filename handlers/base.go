@@ -61,3 +61,14 @@ func (h BaseHandler) ParseJSON(r *http.Request, dest interface{}) {
 		panic(fmt.Errorf("failed to decode request body as JSON: %s", err.Error()))
 	}
 }
+
+// RespondTEXT sends an object as a TEXT encoded response
+func (h BaseHandler) RespondTEXT(w http.ResponseWriter, status int, resp string) {
+	w.Header().Set("Content-Type", "plain/text")
+	w.WriteHeader(status)
+
+	if _, err:= fmt.Fprintf(w, resp); err != nil{
+		panic(fmt.Errorf("failed to write bash to body: %s", err.Error()))
+	}
+
+}
