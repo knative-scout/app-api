@@ -19,8 +19,10 @@ function header_text {
 }
 
 
-YAML_URL="https://api.kscout.io/apps/{{app.id}}/deploy/parameterized-deployment.yaml"
-CONFIG_URL="https://api.kscout.io/apps/{{app.id}}/deploy/parameters"
+YAML_JSON=$(cat <<-END
+          {{{yaml.file}}}
+END
+)
 
 header_text "Installing Serverless App"
 
@@ -31,44 +33,13 @@ echo # new line
 header_text "Setting Up Configuration"
 SED_DATA="s/data/data/ "
 
-while read -r line <&9
-do
-    ID=$(echo $line | awk '{print $1}')
-    KEY=$(echo $line | awk '{print $2}')
-    DFLT=$(echo $line | awk '{print $3}')
-    BASE64=$(echo $line | awk '{print $4}')
-
-    echo  #new line
-    echo "Default Value for $KEY is '$DFLT'"
-    read -p "Do you want to change it ? (y/n): " choice
-
-    case "$choice" in
-      y|Y|yes|YES|Yes )
-        read -p "Enter new value for $KEY : " value
-        if [[ "$BASE64" == "Y" ]]
-        then
-            value=$(echo "${value}" | base64)
-        else
-            value="${value}"
-        fi
-        SED_DATA="$SED_DATA ; s/$ID/$value/" ;;
-      n|N|no|NO|No )
-        if [[ "$BASE64" == "Y" ]]
-        then
-            DFLT="${value}"
-        else
-            DFLT=$(echo "${DFLT}" | base64 -d)
-        fi
-        SED_DATA="$SED_DATA ; s/$ID/$DFLT/";;
-      * ) echo "invalid input, Please run the script again";;
-    esac
-done 9<<< "$(curl '$CONFIG_URL')"
+{{{replacement.script}}}
 
 echo # new line
 
-header_text "Downloading data and Applying your Configuration"
+header_text "Applying your Configuration"
+data=$(sed "${SED_DATA}" <<< $YAML_JSON)
 
-curl -L "${YAML_URL}" \
-      | sed "${SED_DATA}" \
-      | kubectl -n $namespace apply -f -
+
+echo $data |kubectl -n $namespace apply -f -
 
