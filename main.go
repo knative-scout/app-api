@@ -346,7 +346,7 @@ func main() {
 		baseHandler.GetChild("nsearch"),
 	}).Methods("GET")
 
-	router.Handle("/apps/deploy/{appID}", handlers.AppsDeployHandler{
+	router.Handle("/apps/id/{appID}/deploy.sh", handlers.AppsDeployHandler{
 		baseHandler.GetChild("appsDeploy"),
 	}).Methods("GET")
 
