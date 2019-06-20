@@ -41,7 +41,7 @@ func (h DeployInstructionsHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	h.RespondJSON(w, http.StatusOK, map[string]string{
 		"instructions": fmt.Sprintf("To deploy %s run the following command:  \n"+
 			"```\n"+
-			"curl -L %s://%s/apps/%s/deploy.sh | bash\n"+
+			". <(curl -L %s://%s/apps/%s/deploy.sh)\n"+
 			"```",
 			app.Name,
 			r.URL.Scheme, r.URL.Host, app.AppID),
