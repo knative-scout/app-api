@@ -626,6 +626,7 @@ func CreateDeploymentScript(id string, params []models.AppDeployParameter, ymlfi
 	"fi\n"+
 	"SED_DATA=\"$SED_DATA ; s/$ID/$DFLT/\";;\n"+
 	"* ) echo \"invalid input, Please run the script again\";;\n"+
+	"esac\n"+
 	"\n"
 
 	secretsRes:= ""
