@@ -17,6 +17,9 @@ parameters:
   - name: HOST
     description: Host under which API will be served
     required: True
+  - name: DB_HOST
+    description: Database host
+    required: True
 objects:
   - apiVersion: image.openshift.io/v1
     kind: ImageStream
@@ -170,7 +173,7 @@ objects:
                       name: ${ENV}-mongo-config
                       key: dbName
                 - name: APP_DB_HOST
-                  value: $(${UPPER_ENV}_SERVERLESS_REGISTRY_API_MONGO_SERVICE_HOST)
+                  value: ${DB_HOST}
                 - name: APP_GH_PRIVATE_KEY_PATH
                   value: /mnt/gh-api-config/privateKey
                 - name: APP_GH_INTEGRATION_ID

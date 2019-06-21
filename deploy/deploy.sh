@@ -16,28 +16,88 @@
 #
 #        Deploys Template resource.
 #
+#        USAGE
+#
+#            deploy.sh template-up
+#
 #    up
 #
 #        Deploys processed template resources for environment.
 #
+#        USAGE
+#
+#            deploy.sh up -e ENV [-d]
+#
 #        OPTIONS
+#
+#            -d    Dry run
 #
 #            See COMMON OPTIONS section.
 #
 #            Note on -e ENV: Value of "prod" will deploy to "api.kscout.io".
 #                            Otherwise deploys to "ENV-api.kscout.io".
 #
-#    build
+#    down
 #
-#        Builds Docker image locally and pushes to integrated cluster registry.
+#        Deletes resources for environment.
+#
+#        USAGE
+#
+#            deploy.sh down -e ENV
 #
 #        OPTIONS
 #
 #            See COMMON OPTIONS section.
-
+#
+#    push
+#
+#        Builds Docker image locally and deploys to an environment.
+#
+#        USAGE
+#
+#            deploy.sh push -e ENV
+#
+#        OPTIONS
+#
+#            See COMMON OPTIONS section.
+#
+#    rollout
+#
+#        Runs "oc rollout ROLLOUT_CMD" on the environment's deployment configuration.
+#
+#        USAGE
+#
+#            deploy.sh rollout -e ENV ROLLOUT_CMD
+#
+#        OPTIONS
+#
+#            See COMMON OPTIONS section.
+#
+#        ARGUMENTS
+#
+#            ROLLOUT_CMD    "oc rollout" sub-command to run.
+#
+#    labeled
+#
+#        Runs LABELED_CMD... with the label option to select resources in the environment.
+#
+#        USAGE
+#
+#            deploy.sh labeled -e ENV [-c COMPONENT] LABELED_CMD...
+#
+#        ARGUMENTS
+#
+#            LABELED_CMD...    Command to provide label option
+#
+#        OPTIONS
+#
+#            -c COMPONENT    Selects with "component" label if provided
+#
+#            See COMMON OPTIONS section.
+#
 # COMMON OPTIONS
 #
-#    The "up" and "build" commands share the following options:
+#    The "up", "push", "rollout", and "labeled" commands share the following options:
 #
 #    -e ENV           Environment
 #
@@ -49,7 +109,7 @@ set -e
 org=kscout
 app=serverless-registry-api
 
-image_repo_host=quay.io
+image_repo_host=docker.io
 image_repo_name="$org/$app"
 
 # Helpers
@@ -77,29 +137,6 @@ function ensure-envs() {
     fi
 }
 
-function get-common-options() {
-    # Get
-    while getopts "e:" opt; do
-	case "$opt" in
-	    e) env="$OPTARG" ;;
-	    ?) die "Unknown option" ;;
-	esac
-    done
-
-    # Checks
-    if [ -z "$env" ]; then
-	    die "-e ENV option required"
-    fi
-
-    # Compute
-    image_tag="$env-latest"
-
-    case "$env" in
-	prod) host=api.kscout.io ;;
-	*) host="$env-api.kscout.io" ;;
-    esac
-}
-
 # Command argument
 cmd="$1"
 shift
@@ -120,7 +157,28 @@ case "$cmd" in
 	;;
     up)
 	# Get options
-	get-common-options "$@"
+	while getopts "e:d" opt; do
+	    case "$opt" in
+		e) env="$OPTARG" ;;
+		d) dry_run=true ;;
+		?) die "Unknown option" ;;
+	    esac
+	done
+
+	shift $((OPTIND-1))
+
+	# Checks
+	if [ -z "$env" ]; then
+	    die "-e ENV option required"
+	fi
+
+	# Compute
+	image_tag="$env-latest"
+
+	case "$env" in
+	    prod) host=api.kscout.io ;;
+	    *) host="$env-api.kscout.io" ;;
+	esac
 
 	bold "Deploying $env environment"
 
@@ -133,7 +191,12 @@ case "$cmd" in
 	    APP_GH_PRIVATE_KEY_PATH
 
 	# Deploy secrets and config resources
-	cat <<EOF | oc apply -f -
+	deploy_cmd="oc apply -f -"
+	if [ -n "$dry_run" ]; then
+	    deploy_cmd=cat
+	fi
+	
+	cat <<EOF | $deploy_cmd
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -179,37 +242,188 @@ EOF
 	fi
 
 	# Deploy templated resources
+	db_host='$('
+	db_host+=$(echo "$env" | tr '[:lower:]' '[:upper:]')
+	db_host+=_SERVERLESS_REGISTRY_API_MONGO_SERVICE_HOST
+	db_host+=')'
 	processed_template=$(oc process "$app" \
 				"ENV=$env" \
 				"API_IMAGE_SOURCE=$image_repo_host/$image_repo_name" \
 				"API_IMAGE_REPOSITORY=$image_repo_name" \
 				"API_IMAGE_TAG=$image_tag" \
-				"HOST=$app")
+				"HOST=$host" \
+			        "DB_HOST=$db_host")
 	if [[ "$?" != "0" ]]; then
 	    die "Failed to process template"
 	fi
 
-	if ! echo "$processed_template" | oc apply -f -; then
+	if ! echo "$processed_template" | $deploy_cmd; then
 	    die "Failed to deploy processed template"
 	fi
 
 	bold "Done"
 	;;
-    build)
+    down)
 	# Get options
-	get-common-options "$@"
+	while getopts "e:" opt; do
+	    case "$opt" in
+		e) env="$OPTARG" ;;
+		?) die "Unknown option" ;;
+	    esac
+	done
 
-	bold "Building"
+	shift $((OPTIND-1))
 
-	if ! docker build -t "$image_repo_name:$image_tag" .; then
-	    die "Failed to build"
+	# Checks
+	if [ -z "$env" ]; then
+	    die "-e ENV option required"
+	fi
+
+	bold "Deleting $env environment"
+
+	# Delete
+	for resource in imagestream statefulset pvc deploymentconfig deployment pod route service; do
+	    echo "- $resource"
+	    if ! oc delete "$resource" -l "env=$env,app=$app"; then
+		die "Failed to delete $resource"
+	    fi
+	done
+	;;
+    push)
+	# Get options
+	while getopts "e:" opt; do
+	    case "$opt" in
+		e) env="$OPTARG" ;;
+		?) die "Unknown option" ;;
+	    esac
+	done
+
+	shift $((OPTIND-1))
+
+	# Checks
+	if [ -z "$env" ]; then
+	    die "-e ENV option required"
+	fi
+
+	# Compute
+	image_tag="$env-latest"
+
+	case "$env" in
+	    prod) host=api.kscout.io ;;
+	    *) host="$env-api.kscout.io" ;;
+	esac
+
+	bold "Pushing local code to $env environment"
+
+	# Build
+	if ! docker build \
+	     -t "$image_repo_name:$image_tag" \
+	     -t "$image_repo_host/$image_repo_name:$image_tag" \
+	     .; then
+	    die "Failed to build Docker image"
 	fi
 
 	if ! docker push "$image_repo_host/$image_repo_name:$image_tag"; then
-	    die "Failed to push"
+	    die "Failed to push Docker image"
+	fi
+
+	# Tag image in OpenShift
+	if ! oc tag "$image_repo_host/$image_repo_name:$image_tag" \
+	     "$image_repo_name:$image_tag"; then
+	    die "Failed to tag Docker image in OpenShift"
+	fi
+
+	# Wait for image to be present in ImageStream
+	image_sha=$(docker inspect \
+			   --format='{{ index .RepoDigests 0 }}' \
+			   "$image_repo_name:$image_tag")
+	if [[ "$?" != "0" ]]; then
+	    die "Failed to get Docker image SHA"
+	fi
+
+	while true; do
+	    if oc describe is "$env-$app" | grep "$image_sha"; then
+		echo "Image stream has new Docker image"
+		break
+	    fi
+
+	    echo "Image stream does not have new Docker image yet..."
+	    sleep 1
+	done
+
+	bold "Done"
+	;;
+    rollout)
+	# Get options
+	while getopts "e:" opt; do
+	    case "$opt" in
+		e) env="$OPTARG" ;;
+		?) die "Unknown option" ;;
+	    esac
+	done
+
+	shift $((OPTIND-1))
+
+	# Checks
+	if [ -z "$env" ]; then
+	    die "-e ENV option required"
+	fi
+
+	# Arugments
+	rollout_cmd="$1"
+	shift
+
+	if [ -z "$rollout_cmd" ]; then
+	    die "ROLLOUT_CMD argument required"
+	fi
+
+	bold "Running: oc rollout $rollout_cmd"
+
+	# Run
+	if ! oc rollout "$rollout_cmd" "dc/$env-$app"; then
+	    die "Failed to run rollout command"
 	fi
 
 	bold "Done"
 	;;
-    *) die "CMD must be \"template-up\", \"up\", or \"build\"" ;;
+    labeled)
+	# Get options
+	while getopts "e:c:" opt; do
+	    case "$opt" in
+		e) env="$OPTARG" ;;
+		c) component="$OPTARG" ;;
+		?) die "Unknown option" ;;
+	    esac
+	done
+
+	shift $((OPTIND-1))
+
+	# Checks
+	if [ -z "$env" ]; then
+	    die "-e ENV option required"
+	fi
+
+	# Arugments
+	labeled_cmd="$@"
+
+	if [ -z "$labeled_cmd" ]; then
+	    die "LABELED_CMD argument required"
+	fi
+
+	# Compute label option
+	label_selectors="env=$env,app=$app"
+	if [ -n "$component" ]; then
+	    label_selectors+=",component=$component"
+	fi
+
+	bold "Running: $labeled_cmd -l $label_selectors"
+
+	# Run
+	if ! $labeled_cmd -l "$label_selectors"; then
+	    die "Failed to run labeled command"
+	fi
+
+	bold "Done"
+	;;
+    *) die "CMD must be \"template-up\", \"up\", \"down\", \"push\", \"rollout\", or \"labeled\"" ;;
 esac
