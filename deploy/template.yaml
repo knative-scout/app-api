@@ -1,89 +1,43 @@
-apiVersion: image.openshift.io/v1
-kind: ImageStream
-metadata:
-  name: serverless-registry-api
-  labels:
-    app: serverless-registry-api
-    component: image-stream
-spec:
-  dockerImageRepository: docker.io/kscout/serverless-registry-api
-  tags:
-    - from:
-        kind: DockerImage
-        name: docker.io/kscout/serverless-registry-api:prod-latest
-      name: prod-latest
-      importPolicy:
-        scheduled: true
-    - from:
-        kind: DockerImage
-        name: docker.io/kscout/serverless-registry-api:staging-latest
-      name: staging-latest
-      importPolicy:
-        scheduled: true
----
 apiVersion: v1
 kind: Template
 metadata:
   name: serverless-registry-api
-  annotations:
-    description: API which curates serverless applications.
-    tags: kscout
 parameters:
   - name: ENV
-    description: Deployment environment
+    description: Environment
     required: True
-  - name: UPPER_ENV
-    description: Uppercase version of ENV
+  - name: API_IMAGE_SOURCE
+    description: API Docker image source repository, include registry host (ex., quay.io/kscout/foo)
     required: True
-  - name: MONGO_DB_NAME
-    description: Mongo database name
-    value: serverless-registry-api
-    required: True
-  - name: MONGO_USER
-    description: Mongo user
-    value: serverless-registry-api
-    required: True
-  - name: B64_MONGO_PASSWORD
-    description: Base64 encoded Mongo user password
-    required: True
-  - name: B64_GH_INTEGRATION_ID
-    description: Base64 encoded integration ID of GitHub app
-    required: True
-  - name: B64_GH_INSTALLATION_ID
-    description: Base64 encoded ID of GitHub app
-    required: True
-  - name: B64_GH_PRIVATE_KEY
-    description: Base64 encoded GitHub app private key
-    required: True
-  - name: B64_GH_WEBHOOK_SECRET
-    description: Base64 encoded GitHub webhook secret
+  - name: API_IMAGE_REPOSITORY
+    description: Name of Docker image, do not include registry host (ex., kscout/foo)
+  - name: API_IMAGE_TAG
+    description: API Docker image tag to track
     required: True
   - name: HOST
-    description: Host from which API will be accessible
+    description: Host under which API will be served
+    required: True
+  - name: DB_HOST
+    description: Database host
     required: True
 objects:
-  - apiVersion: v1
-    kind: ConfigMap
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
     metadata:
-      name: ${ENV}-db-config
+      name: ${ENV}-serverless-registry-api
       labels:
         app: serverless-registry-api
-        component: mongo
+        component: image-stream
         env: ${ENV}
-    data:
-      mongoUser: ${MONGO_USER}
-      mongoDbName: ${MONGO_DB_NAME}
-  - apiVersion: v1
-    kind: Secret
-    metadata:
-      name: ${ENV}-mongo-credentials
-      labels:
-        app: serverless-registry-api
-        component: mongo
-        env: ${ENV}
-    type: Opaque
-    data:
-      password: ${B64_MONGO_PASSWORD}
+    spec:
+      dockerImageRepository: ${API_IMAGE_SOURCE}
+      tags:
+        - from:
+            kind: DockerImage
+            name: ${API_IMAGE_SOURCE}:${API_IMAGE_TAG}
+          name: ${API_IMAGE_TAG}
+          importPolicy:
+            scheduled: true
   - apiVersion: apps/v1
     kind: StatefulSet
     metadata:
@@ -114,8 +68,8 @@ objects:
                 - name: MONGO_INITDB_ROOT_USERNAME
                   valueFrom:
                     configMapKeyRef:
-                      name: ${ENV}-db-config
-                      key: mongoUser
+                      name: ${ENV}-mongo-config
+                      key: user
                 - name: MONGO_INITDB_ROOT_PASSWORD
                   valueFrom:
                     secretKeyRef:
@@ -124,17 +78,17 @@ objects:
                 - name: MONGO_INITDB_DATABASE
                   valueFrom:
                     configMapKeyRef:
-                      name: ${ENV}-db-config
-                      key: mongoDbName
+                      name: ${ENV}-mongo-config
+                      key: dbName
               ports:
                 - name: mongo
                   containerPort: 27017
               volumeMounts:
-                - name: mongo
+                - name: ${ENV}-serverless-registry-api-mongo
                   mountPath: /data/db
       volumeClaimTemplates:
       - metadata:
-          name: mongo
+          name: ${ENV}-serverless-registry-api-mongo
           labels:
             app: serverless-registry-api
             component: mongo
@@ -163,20 +117,6 @@ objects:
           name: mongo
           targetPort: mongo
           protocol: TCP
-  - apiVersion: v1
-    kind: Secret
-    metadata:
-      name: ${ENV}-gh-api-configuration
-      labels:
-        app: serverless-registry-api
-        component: api
-        env: ${ENV}
-    type: Opaque
-    data:
-      ghInstallationID: ${B64_GH_INSTALLATION_ID}
-      ghIntegrationID: ${B64_GH_INTEGRATION_ID}
-      privateKey: ${B64_GH_PRIVATE_KEY}
-      webhookSecret: ${B64_GH_WEBHOOK_SECRET}
   - apiVersion: apps.openshift.io/v1
     kind: DeploymentConfig
     metadata:
@@ -192,13 +132,14 @@ objects:
         component: api
         env: ${ENV}
       triggers:
+        - type: ConfigChange
         - type: ImageChange
           imageChangeParams:
             containerNames:
               - serverless-registry-api
             from:
               kind: ImageStreamTag
-              name: serverless-registry-api:${ENV}-latest
+              name: serverless-registry-api:${API_IMAGE_TAG}
       template:
         metadata:
           labels:
@@ -212,15 +153,15 @@ objects:
                 secretName: ${ENV}-gh-api-configuration
           containers:
             - name: serverless-registry-api
-              image: kscout/serverless-registry-api:${ENV}-latest
+              image: ${API_IMAGE_SOURCE}:${API_IMAGE_TAG}
               env:
                 - name: APP_HTTP_ADDR
                   value: ":5000"
                 - name: APP_DB_USER
                   valueFrom:
                     configMapKeyRef:
-                      name: ${ENV}-db-config
-                      key: mongoUser
+                      name: ${ENV}-mongo-config
+                      key: user
                 - name: APP_DB_PASSWORD
                   valueFrom:
                     secretKeyRef:
@@ -229,10 +170,10 @@ objects:
                 - name: APP_DB_NAME
                   valueFrom:
                     configMapKeyRef:
-                      name: ${ENV}-db-config
-                      key: mongoDbName
+                      name: ${ENV}-mongo-config
+                      key: dbName
                 - name: APP_DB_HOST
-                  value: $(${UPPER_ENV}_SERVERLESS_REGISTRY_API_MONGO_SERVICE_HOST)
+                  value: ${DB_HOST}
                 - name: APP_GH_PRIVATE_KEY_PATH
                   value: /mnt/gh-api-config/privateKey
                 - name: APP_GH_INTEGRATION_ID
@@ -308,4 +249,4 @@ objects:
         termination: edge
     status:
       ingress:
-        - host: ${HOST}
+        - host: ${HOST}          
