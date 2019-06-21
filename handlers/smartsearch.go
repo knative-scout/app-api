@@ -58,8 +58,12 @@ func smartSearchDB(query string,  h SmartSearchHandler ) []models.App{
 	}
 
 
+	findOptions := options.Find()
+	findOptions.SetSort(projection)
+	findOptions.SetProjection(projection)
+
 	ret := []models.App{}  //to store all result as an array of json files
-	result, err := h.MDbApps.Find(h.Ctx, searchBson , options.Find().SetProjection(projection))
+	result, err := h.MDbApps.Find(h.Ctx, searchBson , findOptions)
 
 	if err != nil {
 		panic(fmt.Errorf("failed to retrieve data from db %s", err.Error()))
