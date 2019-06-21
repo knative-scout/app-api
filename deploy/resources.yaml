@@ -192,6 +192,7 @@ objects:
         component: api
         env: ${ENV}
       triggers:
+        - type: ConfigChange
         - type: ImageChange
           imageChangeParams:
             containerNames:
