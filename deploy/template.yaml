@@ -136,7 +136,7 @@ objects:
         - type: ImageChange
           imageChangeParams:
             containerNames:
-              - serverless-registry-api
+              - api
             from:
               kind: ImageStreamTag
               name: serverless-registry-api:${API_IMAGE_TAG}
@@ -151,8 +151,30 @@ objects:
             - name: gh-api-configuration
               secret:
                 secretName: ${ENV}-gh-api-configuration
+            - name: proxy-config
+              configMap:
+                name: ${ENV}-serverless-registry-api-proxy-config
           containers:
-            - name: serverless-registry-api
+            - name: proxy
+              image: docker.io/kscout/caddy:v0.1.0
+              volumeMounts:
+                - name: proxy-config
+                  mountPath: /mnt
+              ports:
+                - name: proxy-http
+                  containerPort: 5001
+                  protocol: TCP
+              livenessProbe:
+                httpGet:
+                  path: /health
+                  port: proxy-http
+                  scheme: HTTP
+              readinessProbe:
+                httpGet:
+                  path: /health
+                  port: proxy-http
+                  scheme: HTTP
+            - name: api
               image: ${API_IMAGE_SOURCE}:${API_IMAGE_TAG}
               env:
                 - name: APP_HTTP_ADDR
@@ -196,19 +218,19 @@ objects:
                   mountPath: /mnt/gh-api-config
                   readOnly: true
               ports:
-                - name: http
+                - name: api-http
                   containerPort: 5000
                   protocol: TCP
               livenessProbe:
                 httpGet:
                   path: /health
-                  port: http
+                  port: api-http
                   scheme: HTTP
               readinessProbe:
                 httpGet:
                   path: /health
-                  port: http
-                  scheme: HTTP              
+                  port: api-http
+                  scheme: HTTP
   - apiVersion: v1
     kind: Service
     metadata:
@@ -226,7 +248,7 @@ objects:
       ports:
         - protocol: TCP
           port: 80
-          targetPort: http
+          targetPort: proxy-http
           name: http
   - apiVersion: route.openshift.io/v1
     kind: Route
@@ -249,4 +271,4 @@ objects:
         termination: edge
     status:
       ingress:
-        - host: ${HOST}          
+        - host: ${HOST}

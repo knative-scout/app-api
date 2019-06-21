@@ -79,7 +79,7 @@
 #
 #    labeled
 #
-#        Runs LABELED_CMD... with the label option to select resources in the environment.
+#        Runs "oc LABELED_CMD..." with the label option to select resources in the environment.
 #
 #        USAGE
 #
@@ -87,7 +87,7 @@
 #
 #        ARGUMENTS
 #
-#            LABELED_CMD...    Command to provide label option
+#            LABELED_CMD...    Sub-command to provide to "oc"
 #
 #        OPTIONS
 #
@@ -222,6 +222,18 @@ data:
   password: $(echo -n "$APP_DB_PASSWORD" | base64)
 ---
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "$env-serverless-registry-api-proxy-config"
+  labels:
+    app: serverless-registry-api
+    component: api
+    env: "$env"
+data:
+  Caddyfile: |
+$(cat "$prog_dir/../Caddyfile" | sed 's/^/    /g')
+---
+apiVersion: v1
 kind: Secret
 metadata:
   name: "$env-gh-api-configuration"
@@ -282,7 +294,7 @@ EOF
 	bold "Deleting $env environment"
 
 	# Delete
-	for resource in imagestream statefulset pvc deploymentconfig deployment pod route service; do
+	for resource in imagestream statefulset pvc deploymentconfig deployment pod route service configmap secret; do
 	    echo "- $resource"
 	    if ! oc delete "$resource" -l "env=$env,app=$app"; then
 		die "Failed to delete $resource"
@@ -416,10 +428,10 @@ EOF
 	    label_selectors+=",component=$component"
 	fi
 
-	bold "Running: $labeled_cmd -l $label_selectors"
+	bold "Running: oc $labeled_cmd -l $label_selectors"
 
 	# Run
-	if ! $labeled_cmd -l "$label_selectors"; then
+	if ! oc $labeled_cmd -l "$label_selectors"; then
 	    die "Failed to run labeled command"
 	fi
 
