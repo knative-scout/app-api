@@ -113,14 +113,10 @@ The job will set a check run status and make a comment on the PR based on the
 results of the format validation.
 
 # Deployment
-Deployments are created for **environments**.  
+The [`deploy/template.yaml`](deploy/template.yaml) file defines a
+`Template` resource.
 
-An environment is a self contained deployment. Different environments hold code 
-with varying levels of stability.  
-
-The production (or "prod") environment holds the most stable code.  
-The staging environment can hold less stable code, or code who's stability is 
-not yet known.
+The `Template` can be processed to obtain an environment's resource definitions.
 
 ## GitHub App
 ### Create
@@ -172,28 +168,32 @@ The file indicated by `APP_GH_PRIVATE_KEY` must also contain the appropriate
 GitHub application's private key.
 
 ## Deploy
-Run the following commands
+The template resource in [`deploy/template.yaml`](deploy/template.yaml) only has to 
+be deployed once. Or if it changes:
 
 ```
-oc apply -f deploy/resources.yaml
-./deploy/template.sh -e prod | oc apply -f -
-oc rollout latest dc/prod-serverless-registry-api
+./deploy/deploy.sh template
 ```
+
+Spin up an environment:
+
+```
+./deploy/deploy.sh up -e ENV
+```
+
+The `master` branch will automatically be deployed to the `prod` environment.  
 
 ## Staging Deployment
-The `deploy/deploy.sh` script can also be used to deploy one's local code to
-the staging environment.  
+Local code can be deployed to the staging environment.  
 
-The staging environment is configured to be served under the 
-`staging-api.kscout.io` domain.  
-
-Try to coordinate with the team before using the staging environment to avoid 
-stepping on each other's toes.
-
-To deploy to the staging environment run:
+Spin up the staging environment if it doesn't exist already:
 
 ```
-oc apply -f deploy/resources.yaml
-./deploy/template.sh -e staging | oc apply -f -
-oc rollout latest dc/staging-serverless-registry-api
+./deploy/deploy.sh up -e staging
+```
+
+Build local code into a Docker container tagged with the `staging-latest`:
+
+```
+./deploy/deploy.sh build -e staging
 ```
