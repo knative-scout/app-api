@@ -31,7 +31,7 @@ objects:
       tags:
         - from:
             kind: DockerImage
-            name: ${API_IMAGE_REPOSITORY}:${API_IMAGE_TAG}
+            name: ${API_IMAGE_SOURCE}:${API_IMAGE_TAG}
           name: ${API_IMAGE_TAG}
           importPolicy:
             scheduled: true
@@ -136,7 +136,7 @@ objects:
               - serverless-registry-api
             from:
               kind: ImageStreamTag
-              name: serverless-registry-api:${ENV}-latest
+              name: serverless-registry-api:${API_IMAGE_TAG}
       template:
         metadata:
           labels:
@@ -150,7 +150,7 @@ objects:
                 secretName: ${ENV}-gh-api-configuration
           containers:
             - name: serverless-registry-api
-              image: ${API_IMAGE_REPOSITORY}:${API_IMAGE_TAG}
+              image: ${API_IMAGE_SOURCE}:${API_IMAGE_TAG}
               env:
                 - name: APP_HTTP_ADDR
                   value: ":5000"
@@ -158,7 +158,7 @@ objects:
                   valueFrom:
                     configMapKeyRef:
                       name: ${ENV}-mongo-config
-                      key: mongoUser
+                      key: user
                 - name: APP_DB_PASSWORD
                   valueFrom:
                     secretKeyRef:
@@ -168,7 +168,7 @@ objects:
                   valueFrom:
                     configMapKeyRef:
                       name: ${ENV}-mongo-config
-                      key: mongoDbName
+                      key: dbName
                 - name: APP_DB_HOST
                   value: $(${UPPER_ENV}_SERVERLESS_REGISTRY_API_MONGO_SERVICE_HOST)
                 - name: APP_GH_PRIVATE_KEY_PATH
