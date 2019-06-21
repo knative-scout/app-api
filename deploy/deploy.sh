@@ -12,7 +12,7 @@
 #
 # COMMANDS
 #
-#    template
+#    template-up
 #
 #        Deploys Template resource.
 #
@@ -23,6 +23,9 @@
 #        OPTIONS
 #
 #            See COMMON OPTIONS section.
+#
+#            Note on -e ENV: Value of "prod" will deploy to "api.kscout.io".
+#                            Otherwise deploys to "ENV-api.kscout.io".
 #
 #    build
 #
@@ -36,17 +39,18 @@
 #
 #    The "up" and "build" commands share the following options:
 #
-#    -e ENV           Environment.
-#    -r IMAGE_REPO    
-#    -t IMAGE_TAG     Name of Docker image tag. Defaults to "$env-latest".
+#    -e ENV           Environment
 #
 #?
 
 # Configuration
+set -e
+
+org=kscout
 app=serverless-registry-api
 
-default_image_repo="quay.io/kscout/$app"
-default_image_repo_staging="kscout/$app"
+image_repo_host=quay.io
+image_repo_name="$org/$app"
 
 # Helpers
 prog_dir=$(realpath $(dirname "$0"))
@@ -69,17 +73,15 @@ function ensure-envs() {
     done
 
     if [ -n "$missing" ]; then
-	die "${missing[@]} environment variables required"
+	die "${missing[@]} environment variable(s) required"
     fi
 }
 
 function get-common-options() {
     # Get
-    while getopts "e:r:t:" opt; do
+    while getopts "e:" opt; do
 	case "$opt" in
 	    e) env="$OPTARG" ;;
-	    r) image_repo="$OPTARG" ;;
-	    t) image_tag="$OPTARG" ;;
 	    ?) die "Unknown option" ;;
 	esac
     done
@@ -87,19 +89,15 @@ function get-common-options() {
     # Checks
     if [ -z "$env" ]; then
 	    die "-e ENV option required"
-    fi    
-
-    # Defaults
-    if [ -z "$image_repo" ]; then
-	case "$env" in
-	    staging) image_repo="$default_image_repo_staging" ;;
-	    *) image_repo="$default_image_repo" ;;
-	esac
     fi
 
-    if [ -z "$image_tag" ]; then
-	image_tag="$env-latest"
-    fi
+    # Compute
+    image_tag="$env-latest"
+
+    case "$env" in
+	prod) host=api.kscout.io ;;
+	*) host="$env-api.kscout.io" ;;
+    esac
 }
 
 # Command argument
@@ -111,7 +109,7 @@ if [ -z "$cmd" ]; then
 fi
 
 case "$cmd" in
-    template)
+    template-up)
 	bold "Deploying template"
 
 	if ! oc apply -f "$prog_dir/template.yaml"; then
@@ -122,7 +120,7 @@ case "$cmd" in
 	;;
     up)
 	# Get options
-	get-common-options
+	get-common-options "$@"
 
 	bold "Deploying $env environment"
 
@@ -136,44 +134,45 @@ case "$cmd" in
 
 	# Deploy secrets and config resources
 	cat <<EOF | oc apply -f -
-        apiVersion: v1
-	kind: ConfigMap
-	metadata:
-	  name: $env-mongo-config
-	  labels:
-	    app: serverless-registry-api
-	    component: mongo
-	    env: $env
-	data:
-	  user: $env-serverless-registry-api
-	  dbName: $env-serverless-registry-api
-        ---
-	apiVersion: v1
-	kind: Secret
-	metadata:
-	  name: $env-mongo-credentials
-	  labels:
-	    app: serverless-registry-api
-	    component: mongo
-	    env: $env
-	type: Opaque
-	data:
-	  password: $(echo "$APP_DB_PASSWORD" | base64)
-        ---
-        apiVersion: v1
-	kind: Secret
-	metadata:
-	  name: $env--gh-api-configuration
-	  labels:
-	    app: serverless-registry-api
-	    component: api
-	    env: $env
-	type: Opaque
-	data:
-	  ghIntegrationID: $(echo "$APP_GH_INTEGRATION_ID" | base64)
-	  ghInstallationID: $(ehco "$APP_GH_INSTALLATION_ID" | base64)
-	  privateKey: $(cat "$APP_GH_PRIVATE_KEY_PATH" | base64")
-	  webhookSecret: $(echo "$APP_GH_WEBHOOK_SECRET | base64)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "$env-mongo-config"
+  labels:
+    app: serverless-registry-api
+    component: mongo
+    env: "$env"
+data:
+  user: "$env-serverless-registry-api"
+  dbName: "$env-serverless-registry-api"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: "$env-mongo-credentials"
+  labels:
+    app: serverless-registry-api
+    component: mongo
+    env: "$env"
+type: Opaque
+data:
+  password: $(echo -n "$APP_DB_PASSWORD" | base64)
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: "$env-gh-api-configuration"
+  labels:
+    app: serverless-registry-api
+    component: api
+    env: "$env"
+type: Opaque
+data:
+  ghIntegrationID: $(echo -n "$APP_GH_INTEGRATION_ID" | base64)
+  ghInstallationID: $(echo -n "$APP_GH_INSTALLATION_ID" | base64)
+  privateKey: |
+$(cat "$APP_GH_PRIVATE_KEY_PATH" | base64 | sed 's/^/    /g')
+  webhookSecret: $(echo -n "$APP_GH_WEBHOOK_SECRET" | base64)
 EOF
 	if [[ "$?" != "0" ]]; then
 	    die "Failed to deploy configuration and secrets"
@@ -182,8 +181,10 @@ EOF
 	# Deploy templated resources
 	processed_template=$(oc process "$app" \
 				"ENV=$env" \
-				"API_IMAGE_REPOSITORY=$image_repository" \
-				"API_IMAGE_TAG=$image_tag")
+				"API_IMAGE_SOURCE=$image_repo_host/$image_repo_name" \
+				"API_IMAGE_REPOSITORY=$image_repo_name" \
+				"API_IMAGE_TAG=$image_tag" \
+				"HOST=$app")
 	if [[ "$?" != "0" ]]; then
 	    die "Failed to process template"
 	fi
@@ -196,12 +197,19 @@ EOF
 	;;
     build)
 	# Get options
-	get-common-options
+	get-common-options "$@"
 
 	bold "Building"
 
-	if ! docker build -t "kscout/$app:$image_tag" .; then
+	if ! docker build -t "$image_repo_name:$image_tag" .; then
 	    die "Failed to build"
 	fi
 
-	if ! docker push
+	if ! docker push "$image_repo_host/$image_repo_name:$image_tag"; then
+	    die "Failed to push"
+	fi
+
+	bold "Done"
+	;;
+    *) die "CMD must be \"template-up\", \"up\", or \"build\"" ;;
+esac
