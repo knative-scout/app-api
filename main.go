@@ -350,6 +350,11 @@ func main() {
 		baseHandler.GetChild("appsDeploy"),
 	}).Methods("GET")
 
+	router.Handle("/apps/id/{appID}/deployment.json", handlers.AppsDeployResourcesHandler{
+		baseHandler.GetChild("appsDeployResources"),
+	}).Methods("GET")
+
+
 	// !!! Must always be last !!!
 	router.Handle("/", handlers.PreFlightOptionsHandler{
 		baseHandler.GetChild("pre-flight-options"),
