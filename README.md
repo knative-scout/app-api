@@ -172,7 +172,7 @@ The template resource in [`deploy/template.yaml`](deploy/template.yaml) only has
 be deployed once. Or if it changes:
 
 ```
-./deploy/deploy.sh template
+./deploy/deploy.sh template-up
 ```
 
 Spin up an environment:
@@ -192,8 +192,8 @@ Spin up the staging environment if it doesn't exist already:
 ./deploy/deploy.sh up -e staging
 ```
 
-Build local code into a Docker container tagged with the `staging-latest`:
+Build local code and deploy to environment"
 
 ```
-./deploy/deploy.sh build -e staging
+./deploy/deploy.sh push -e staging
 ```
