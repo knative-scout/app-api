@@ -172,18 +172,10 @@ objects:
                   path: /health
                   port: proxy-http
                   scheme: HTTP
-                httpGet:
-                  path: /metrics
-                  port: proxy-metrics
-                  scheme: HTTP
               readinessProbe:
                 httpGet:
                   path: /health
                   port: proxy-http
-                  scheme: HTTP
-                httpGet:
-                  path: /metrics
-                  port: proxy-metrics
                   scheme: HTTP
             - name: api
               image: ${API_IMAGE_SOURCE}:${API_IMAGE_TAG}
@@ -296,7 +288,7 @@ objects:
         name: ${ENV}-serverless-registry-api
         weight: 100
       port:
-        targetPort: http
+        targetPort: proxy-http
       tls:
         termination: edge
     status:
