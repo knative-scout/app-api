@@ -1,3 +1,4 @@
 http://*:5001 {
+  prometheus :9180
   proxy / :5000
 }
