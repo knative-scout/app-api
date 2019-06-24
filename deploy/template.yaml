@@ -156,7 +156,7 @@ objects:
                 name: ${ENV}-serverless-registry-api-proxy-config
           containers:
             - name: proxy
-              image: docker.io/kscout/caddy:v0.1.0
+              image: docker.io/kscout/caddy:v0.2.0
               volumeMounts:
                 - name: proxy-config
                   mountPath: /mnt
@@ -164,15 +164,26 @@ objects:
                 - name: proxy-http
                   containerPort: 5001
                   protocol: TCP
+                - name: proxy-metrics
+                  containerPort: 9180
+                  protocol: TCP
               livenessProbe:
                 httpGet:
                   path: /health
                   port: proxy-http
                   scheme: HTTP
+                httpGet:
+                  path: /metrics
+                  port: proxy-metrics
+                  scheme: HTTP
               readinessProbe:
                 httpGet:
                   path: /health
                   port: proxy-http
+                  scheme: HTTP
+                httpGet:
+                  path: /metrics
+                  port: proxy-metrics
                   scheme: HTTP
             - name: api
               image: ${API_IMAGE_SOURCE}:${API_IMAGE_TAG}
@@ -249,7 +260,26 @@ objects:
         - protocol: TCP
           port: 80
           targetPort: proxy-http
-          name: http
+          name: proxy-http
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: ${ENV}-serverless-registry-api-metrics
+      labels:
+        app: serverless-registry-api
+        component: api
+        env: ${ENV}
+    spec:
+      type: ClusterIP
+      selector:
+        app: serverless-registry-api
+        component: api
+        env: ${ENV}
+      ports:
+        - protocol: TCP
+          port: 9180
+          targetPort: proxy-metrics
+          name: proxy-metrics
   - apiVersion: route.openshift.io/v1
     kind: Route
     metadata:
