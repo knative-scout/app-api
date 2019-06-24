@@ -59,6 +59,9 @@ this repository.
 You do not have to change any of the other configuration fields. Documentation 
 for these fields follows:
 
+- `APP_EXTERNAL_URL` (String): External URL from which HTTP server can
+  be accessed. Should include any URL schemes, ports, paths, subdomains, ect.
+  Should not include a trailing slash.
 - `APP_HTTP_ADDR` (String): Address to bind server, defaults to `:5000`
 - `APP_DB_HOST` (String): MongoDB host, defaults to `localhost`
 - `APP_DB_PORT` (Integer): MongoDB port, defaults to `27017`

@@ -9,6 +9,11 @@ import (
 
 // Config holds application configuration
 type Config struct {
+	// ExternalURL is the host the HTTP server can be accessed by from external users.
+	// This should include any URL scheme, ports, paths, subdomains, ect. Should not
+	// include a trailing slash.
+	ExternalURL string `default:"http://localhost:5000" split_words:"true" required:"true"`
+	
 	// HTTPAddr is the HTTP server's bind address
 	HTTPAddr string `default:":5000" split_words:"true" required:"true"`
 
