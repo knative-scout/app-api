@@ -139,7 +139,7 @@ objects:
               - api
             from:
               kind: ImageStreamTag
-              name: serverless-registry-api:${API_IMAGE_TAG}
+              name: ${ENV}-serverless-registry-api:${API_IMAGE_TAG}
       template:
         metadata:
           labels:
