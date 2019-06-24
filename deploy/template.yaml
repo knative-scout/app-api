@@ -180,6 +180,8 @@ objects:
             - name: api
               image: ${API_IMAGE_SOURCE}:${API_IMAGE_TAG}
               env:
+                - name: APP_EXTERNAL_URL
+                  value: "https://${HOST}"
                 - name: APP_HTTP_ADDR
                   value: ":5000"
                 - name: APP_DB_USER
