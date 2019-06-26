@@ -62,8 +62,9 @@ Schema:
 		 encoded in the template
   - `deploy_script` (String): Custom Bash deploy script for app		 
 - `version` (String)
-- `author` (String)
-- `maintainer` (String)
+- `author` (Object)
+  - `name` (String)
+  - `email` (String)
 
 ## Resource Model
 `resource` collection.
