@@ -39,10 +39,10 @@ func getTagsFromDB(query string, h AppTagsHandler ) []string {
 
 	// if we have additional parametres, only get the tags of matched apps.
 	if len(query)>0{
-		query := strings.ReplaceAll(query,",","|")
+		query := strings.Split(query, ",")
 		tagsBson = append(tagsBson, bson.E{
-			"description",
-			bson.D{{"$regex", "\\s*("+query+")"}, {"$options","i"}},
+			"tags",
+			bson.D{{"$in", query}},
 		})
 	}
 

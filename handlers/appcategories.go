@@ -39,10 +39,10 @@ func getCategoriesFromDB(query string, h AppCategoriesHandler) []string {
 
 	// if we have additional parametres, only get the tags of matched apps.
 	if len(query)>0{
-		query := strings.ReplaceAll(query,",","|")
+		query := strings.Split(query, ",")
 		categoriesBson = append(categoriesBson, bson.E{
-			"description",
-			bson.D{{"$regex", "\\s*("+query+")"}, {"$options","i"}},
+			"categories",
+			bson.D{{"$in", query}},
 		})
 	}
 
