@@ -17,7 +17,7 @@ type AppManifestFile struct {
 	Categories []string `yaml:"categories"`
 
 	// Author is the person who created the app
-	Author string `yaml:"author"`
+	Author ContactInfo `yaml:"author"`
 
 	// Maintainer is the person who will support the app
 	Maintainer string `yaml:"maintainer"`

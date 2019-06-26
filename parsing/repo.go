@@ -142,7 +142,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 	app := models.App{}
 
 	app.AppID = id
-	app.VerificationStatus = models.VerificationStatusPending
+	app.VerificationStatus = "pending"
 
 	ghURLRef := "master"
 	if len(p.RepoRef) > 0 {
@@ -219,7 +219,6 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				app.Name = manifest.Name
 				app.Tagline = manifest.Tagline
 				app.Author = manifest.Author
-				app.Maintainer = manifest.Maintainer
 				
 			case "README.md":
 				// {{{2 Get content
