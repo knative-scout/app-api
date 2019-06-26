@@ -27,7 +27,7 @@ func (h AppSearchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	apps, categsRes, tagsRes := getSearchDataFromDB(query, tags, categories, h)
 
-	resp := map[string][]models.App{
+	resp := map[string]interface{}{
 		"apps":apps,
 		"categories":categsRes,
 		"tags":tagsRes,
@@ -83,7 +83,7 @@ func getSearchDataFromDB(query string, tags string, categories string, h AppSear
 		}
 		ret = append(ret,a)
 		categsRes = append(categsRes, a.Categories...)
-		tagsRes = append(tagsRes, a.tags...)
+		tagsRes = append(tagsRes, a.Tags...)
 
 
 
