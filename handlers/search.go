@@ -25,10 +25,12 @@ func (h AppSearchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	tags := vars.Get("tags")
 	categories := vars.Get("categories")
 
-	result := getSearchDataFromDB(query, tags, categories, h)
+	apps, categsRes, tagsRes := getSearchDataFromDB(query, tags, categories, h)
 
-	resp := map[string][]models.App{
-		"apps":result,
+	resp := map[string]interface{}{
+		"apps":apps,
+		"categories":categsRes,
+		"tags":tagsRes,
 	}
 
 
@@ -36,7 +38,7 @@ func (h AppSearchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 
-func getSearchDataFromDB(query string, tags string, categories string, h AppSearchHandler ) []models.App{
+func getSearchDataFromDB(query string, tags string, categories string, h AppSearchHandler ) ([]models.App, []string, []string) {
 
 	// if query, tags or categories are empty strings return all apps as result
 	// else, construct a bson query will all the required parameters and find in database
@@ -65,6 +67,8 @@ func getSearchDataFromDB(query string, tags string, categories string, h AppSear
 
 
 	ret := []models.App{}  //to store all result as an array of json files
+	categsRes := []string{}
+	tagsRes := []string{}
 	result, err := h.MDbApps.Find(h.Ctx, searchBson)
 
 	if err != nil {
@@ -78,6 +82,12 @@ func getSearchDataFromDB(query string, tags string, categories string, h AppSear
 			panic(fmt.Errorf("Unable to get apps from database: %s", err.Error()))
 		}
 		ret = append(ret,a)
+		categsRes = append(categsRes, a.Categories...)
+		tagsRes = append(tagsRes, a.Tags...)
+
+
+
+
 	}
-	return ret
+	return ret, removeDuplicates(categsRes), removeDuplicates(tagsRes)
 }
