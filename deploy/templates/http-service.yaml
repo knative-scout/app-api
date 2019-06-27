@@ -1,17 +1,17 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Values.env }}-serverless-registry-api
+  name: {{ .Values.global.env }}-serverless-registry-api
   labels:
     app: serverless-registry-api
     component: api
-    env: {{ .Values.env }}
+    env: {{ .Values.global.env }}
 spec:
   type: ClusterIP
   selector:
     app: serverless-registry-api
     component: api
-    env: {{ .Values.env }}
+    env: {{ .Values.global.env }}
   ports:
     - protocol: TCP
       port: 80

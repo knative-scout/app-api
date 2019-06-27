@@ -1,17 +1,17 @@
 apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
-  name: {{ .Values.env }}-serverless-registry-api
+  name: {{ .Values.global.env }}-serverless-registry-api
   labels:
     app: serverless-registry-api
     component: image-stream
-    env: {{ .Values.env }}
+    env: {{ .Values.global.env }}
 spec:
   dockerImageRepository: docker.io/kscout/serverless-registry-api
   tags:
     - from:
         kind: DockerImage
-        name: docker.io/kscout/serverless-registry-api:{{ .Values.env }}-latest
-      name: {{ .Values.env }}-latest
+        name: docker.io/kscout/serverless-registry-api:{{ .Values.global.env }}-latest
+      name: {{ .Values.global.env }}-latest
       importPolicy:
         scheduled: true

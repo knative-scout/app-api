@@ -1,17 +1,17 @@
 apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
-  name: {{ .Values.env }}-serverless-registry-api
+  name: {{ .Values.global.env }}-serverless-registry-api
   labels:
     app: serverless-registry-api
     component: api
-    env: {{ .Values.env }}
+    env: {{ .Values.global.env }}
 spec:
   replicas: 1
   selector:
     app: serverless-registry-api
     component: api
-    env: {{ .Values.env }}
+    env: {{ .Values.global.env }}
   triggers:
     - type: ConfigChange
     - type: ImageChange
@@ -20,21 +20,21 @@ spec:
           - api
         from:
           kind: ImageStreamTag
-          name: {{ .Values.env }}-serverless-registry-api:{{ .Values.env }}-latest
+          name: {{ .Values.global.env }}-serverless-registry-api:{{ .Values.global.env }}-latest
   template:
     metadata:
       labels:
         app: serverless-registry-api
         component: api
-        env: {{ .Values.env }}
+        env: {{ .Values.global.env }}
     spec:
       volumes:
         - name: gh-api-configuration
           secret:
-            secretName: {{ .Values.env }}-gh-api-configuration
+            secretName: {{ .Values.global.env }}-gh-api-configuration
         - name: proxy-config
           configMap:
-            name: {{ .Values.env }}-serverless-registry-api-proxy-config
+            name: {{ .Values.global.env }}-serverless-registry-api-proxy-config
       containers:
         - name: proxy
           image: docker.io/kscout/caddy:v0.2.0
@@ -59,7 +59,7 @@ spec:
               port: proxy-http
               scheme: HTTP
         - name: api
-          image: docker.io/kscout/serverless-registry-api:{{ .Values.env }}-latest
+          image: docker.io/kscout/serverless-registry-api:{{ .Values.global.env }}-latest
           env:
             - name: APP_EXTERNAL_URL
               value: https://{{ template "serverless-registry-api.host" . }}
@@ -68,36 +68,36 @@ spec:
             - name: APP_DB_USER
               valueFrom:
                 configMapKeyRef:
-                  name: {{ .Values.env }}-mongo-config
+                  name: {{ .Values.global.env }}-mongo-config
                   key: user
             - name: APP_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.env }}-mongo-credentials
+                  name: {{ .Values.global.env }}-mongo-credentials
                   key: password
             - name: APP_DB_NAME
               valueFrom:
                 configMapKeyRef:
-                  name: {{ .Values.env }}-mongo-config
+                  name: {{ .Values.global.env }}-mongo-config
                   key: dbName
             - name: APP_DB_HOST
-              value: {{ .Values.env | upper }}_SERVERLESS_REGISTRY_API_MONGO_SERVICE_HOST
+              value: {{ .Values.global.env | upper }}_SERVERLESS_REGISTRY_API_MONGO_SERVICE_HOST
             - name: APP_GH_PRIVATE_KEY_PATH
               value: /mnt/gh-api-config/privateKey
             - name: APP_GH_INTEGRATION_ID
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.env }}-gh-api-configuration
+                  name: {{ .Values.global.env }}-gh-api-configuration
                   key: ghIntegrationID
             - name: APP_GH_INSTALLATION_ID
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.env }}-gh-api-configuration
+                  name: {{ .Values.global.env }}-gh-api-configuration
                   key: ghInstallationID
             - name: APP_GH_WEBHOOK_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.env }}-gh-api-configuration
+                  name: {{ .Values.global.env }}-gh-api-configuration
                   key: webhookSecret
           volumeMounts:
             - name: gh-api-configuration
