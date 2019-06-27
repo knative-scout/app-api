@@ -1,0 +1,3 @@
+[submodule "deploy/charts/mongo"]
+	path = deploy/charts/mongo
+	url = git@github.com:kscout/mongo-chart.git
