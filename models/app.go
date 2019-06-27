@@ -13,7 +13,7 @@ type App struct {
 	Tags []string `json:"tags" bson:"tags" validate:"required,lowercase"`
 
 	// Categories is a list of categories
-	Categories []string `json:"categories" bson:"categories" validate:"required,lowercase"`
+	Categories []string `json:"categories" bson:"categories" validate:"required,lowercase,categories"`
 
 	// Author is the person who created the app
 	Author ContactInfo `yaml:"author" json:"author" bson:"author" validate:"required"`

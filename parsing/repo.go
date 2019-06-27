@@ -562,9 +562,9 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					"a value must be provided",
 					"set a value",
 				},
-				"contact_info": []string{
-					"must be in format: `NAME <EMAIL>`",
-					"ensure value matches specified format",
+				"categories": []string{
+					"only certain categories are allowed",
+					"see [contributing documentation](https://github.com/kscout/serverless-apps#contributing) for a list of allowed category values",
 				},
 			}
 			
