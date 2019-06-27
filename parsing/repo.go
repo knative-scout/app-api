@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"crypto/sha256"
-	"regexp"
 
 	"github.com/kscout/serverless-registry-api/models"
 	"github.com/kscout/serverless-registry-api/validation"
@@ -42,9 +41,6 @@ type RepoParser struct {
 	// RepoRef is the Git reference to parse data at
 	RepoRef string
 }
-
-// invalidBashVarChars matches characters that are not allowed to be in bash variable names
-var invalidBashVarChars = regexp.MustCompile("[^a-zA-Z0-9]")
 
 // GetAppIDs returns the IDs of all the serverless applications in a repository
 func (p RepoParser) GetAppIDs() ([]string, error) {
@@ -305,14 +301,14 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				}
 
 				// {{{3 Split content up by resource
-				resources := [][]byte{}
+				resourcesYAML := [][]byte{}
 
 				for _, fileTxt := range filesTxt {
 					lines := []string{}
 					for _, line := range strings.Split(fileTxt, "\n") {
 						if strings.ReplaceAll(line, " ", "") == "---" {
 							if len(lines) > 0 {
-								resources = append(resources,
+								resourcesYAML = append(resourcesYAML,
 									[]byte(strings.Join(lines, "\n")))
 								lines = []string{}
 							}
@@ -322,60 +318,104 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					}
 					
 					if len(lines) > 0 {
-						resources = append(resources,
+						resourcesYAML = append(resourcesYAML,
 							[]byte(strings.Join(lines, "\n")))
 					}
 				}
 
-				// {{{2 Convert all YAML into JSON
+				// {{{2 Parse resources
 				resourcesJSON := [][]byte{}
 
-				for _, resourceYAML := range resources {
-					jsonBytes, err := yaml.YAMLToJSON(resourceYAML)
+				params := []models.AppDeployParameter{}				
+				paramdResourcesJSON := [][]byte{}
+
+				for _, resourceYAML := range resourcesYAML {
+					// {{{3 Convert to JSON
+					resourceJSON, err := yaml.YAMLToJSON(resourceYAML)
 					if err != nil {
 						errs = append(errs, ParseError{
 							What: whatDir,
-							Why: "failed to convert deployment resource into JSON",
+							Why: "failed to convert YAML to JSON",
 							InternalError: err,
 						})
 						continue
 					}
+
+					// {{{3 Parse type data
+					var resourceType v1Meta.TypeMeta
 					
-					resourcesJSON = append(resourcesJSON, jsonBytes)
-				}
-
-				// {{{2 Parse each resource and determine if can be paramterized
-				params := []models.AppDeployParameter{}
-				paramdResources := [][]byte{}
-
-				for _, resourceBytes := range resourcesJSON {
-					var typeMeta v1Meta.TypeMeta
-					if err := json.Unmarshal(resourceBytes, &typeMeta); err != nil {
+					err = json.Unmarshal(resourceJSON, &resourceType)
+					if err != nil {
 						errs = append(errs, ParseError{
 							What: whatDir,
-							Why: fmt.Sprintf("failed to parse a resource's Kubernetes type information as JSON: %s",
-								err.Error()),
-							FixInstructions: "ensure all deployment resources have an `apiVersion` and `kind` field and proper YAML formatting",
+							Why: "failed to parse resource type information",
+							InternalError: err,
 						})
 						continue
 					}
 
-					// {{{3 Determine if we should parameterize it
-					if typeMeta.APIVersion == "v1" && typeMeta.Kind == "Secret" {
-						// {{{4 Parse as Secret
+					// {{{3 Do not allow namespace resources in the deployment
+					if resourceType.Kind == "Namespace" {
+						errs = append(errs, ParseError{
+							What: whatDir,
+							Why: "resources of type Namespace are not allowed",
+							FixInstructions: "remove all Namespace resources",
+						})
+						continue
+					}
+
+					// {{{3 Parse metadata
+					var resourceMeta v1Meta.ObjectMeta
+
+					err = json.Unmarshal(resourceJSON, &resourceMeta)
+					if err != nil {
+						errs = append(errs, ParseError{
+							What: whatDir,
+							Why: "failed to parse resource metadata information",
+							InternalError: err,
+						})
+						continue
+					}
+
+					// {{{3 Do not allow resources with a namespace field
+					if len(resourceMeta.Namespace) > 0 {
+						errs = append(errs, ParseError{
+							What: whatDir,
+							Why: "resources may not have a metadata.namespace field",
+							FixInstructions: "ensure resources do not have a metadata.namespace field",
+						})
+						continue
+					}
+
+					// {{{3 Parameterize
+					// {{{4 Save un-parameterized resource
+					resourcesJSON = append(resourcesJSON, resourceJSON)
+
+					// Only parameterize v1 API resources
+					if resourceType.APIVersion != "v1" {
+						paramdResourcesJSON = append(paramdResourcesJSON, resourceJSON)
+						continue
+					}
+					
+					switch resourceType.Kind {
+					case "Namespace":
+						// Do not include Namespaces in deployment resources
+						continue
+					case "Secret":
 						var secret v1Core.Secret
-						if err := json.Unmarshal(resourceBytes, &secret); err != nil {
+						
+						err := json.Unmarshal(resourceJSON, &secret)
+						if err != nil {
 							errs = append(errs, ParseError{
 								What: whatDir,
-								Why: fmt.Sprintf("failed to parse Kubernetes resource with `kind: Secret` as JSON: %s",
-									err.Error()),
-								FixInstructions: "ensure all `Secret` resources follow the `v1.Secret` schema",
+								Why: "failed to parse resource as v1.Secret",
+								InternalError: err,
 							})
 							continue
 						}
-					
-						// {{{4 Substitute parameters
+
 						newData := map[string][]byte{}
+						
 						for key, data := range secret.Data {
 							param := models.AppDeployParameter{
 								Substitution: uuid.New().String(),
@@ -391,33 +431,32 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 
 						secret.Data = newData
 
-						// {{{4 Save substituted parameters
-						subBytes, err := json.Marshal(secret)
+						resourceJSON, err = json.Marshal(secret)
 						if err != nil {
 							errs = append(errs, ParseError{
 								What: whatDir,
-								Why: fmt.Sprintf("failed to represent deployment v1.Secret as JSON: %s",
-									err.Error()),
-								FixInstructions: "check deployment files YAML syntax",
-							})
-							continue
-						}
-						paramdResources = append(paramdResources, subBytes)
-					} else if typeMeta.APIVersion == "v1" && typeMeta.Kind == "ConfigMap" {
-						// {{{4 Parse as ConfigMap
-						var configMap v1Core.ConfigMap
-						if err := json.Unmarshal(resourceBytes, &configMap); err != nil {
-							errs = append(errs, ParseError{
-								What: whatDir,
-								Why: fmt.Sprintf("failed to parse resource with `kind: ConfigMap` as JSON: %s",
-									err.Error()),
-								FixInstructions: "ensure all `v1.ConfigMap` resources follow the schema",
+								Why: "failed to save resource as JSON",
+								InternalError: err,
 							})
 							continue
 						}
 
-						// {{{4 Substitute parameters
+						paramdResourcesJSON = append(paramdResourcesJSON, resourceJSON)
+					case "ConfigMap":
+						var configMap v1Core.ConfigMap
+						
+						err := json.Unmarshal(resourceJSON, &configMap)
+						if err != nil {
+							errs = append(errs, ParseError{
+								What: whatDir,
+								Why: "failed to parse resource as v1.ConfigMap",
+								InternalError: err,
+							})
+							continue
+						}
+
 						newData := map[string]string{}
+						
 						for key, data := range configMap.Data {
 							param := models.AppDeployParameter{
 								Substitution: uuid.New().String(),
@@ -433,20 +472,17 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 
 						configMap.Data = newData
 
-						// {{{4 Save substituted parameters
-						subBytes, err := json.Marshal(configMap)
+						resourceJSON, err = json.Marshal(configMap)
 						if err != nil {
 							errs = append(errs, ParseError{
 								What: whatDir,
-								Why: fmt.Sprintf("failed to represent deployment v1.ConfigMap as YAML: %s",
-									err.Error()),
-								FixInstructions: "check deployment files YAML syntax",
+								Why: "failed to save resource as JSON",
+								InternalError: err,
 							})
 							continue
 						}
-						paramdResources = append(paramdResources, subBytes)
-					} else {
-						paramdResources = append(paramdResources, resourceBytes)
+
+						paramdResourcesJSON = append(paramdResourcesJSON, resourceJSON)
 					}
 				}
 
@@ -456,7 +492,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				}
 
 				paramdResourcesStr := []string{}
-				for _, resource := range paramdResources {
+				for _, resource := range paramdResourcesJSON {
 					paramdResourcesStr = append(paramdResourcesStr, string(resource))
 				}
 
