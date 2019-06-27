@@ -171,17 +171,22 @@ The file indicated by `APP_GH_PRIVATE_KEY` must also contain the appropriate
 GitHub application's private key.
 
 ## Deploy
-The template resource in [`deploy/template.yaml`](deploy/template.yaml) only has to 
-be deployed once. Or if it changes:
+Initialize submodules:
 
 ```
-./deploy/deploy.sh template-up
+git submodule update --init --recursive
 ```
 
-Spin up an environment:
+Deploy to production:
 
 ```
-./deploy/deploy.sh up -e ENV
+make deploy-prod
+```
+
+If this is the first time production has been deployed run:
+
+```
+oc rollout latest dc/prod-serverless-registry-api
 ```
 
 The `master` branch will automatically be deployed to the `prod` environment.  
@@ -192,11 +197,12 @@ Local code can be deployed to the staging environment.
 Spin up the staging environment if it doesn't exist already:
 
 ```
-./deploy/deploy.sh up -e staging
+make deploy-staging
+oc rollout latest dc/staging-serverless-registry-api
 ```
 
-Build local code and deploy to environment"
+Build local code and deploy to environment:
 
 ```
-./deploy/deploy.sh push -e staging
+make docker
 ```

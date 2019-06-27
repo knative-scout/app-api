@@ -1,0 +1,22 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ .Values.env }}-serverless-registry-api
+  labels:
+    app: serverless-registry-api
+    component: api
+    env: {{ .Values.env }}
+spec:
+  host: {{ template "serverless-registry-api.host" . }}
+  path: /
+  to:
+    kind: Service
+    name: {{ .Values.env }}-serverless-registry-api
+    weight: 100
+  port:
+    targetPort: proxy-http
+  tls:
+    termination: edge
+status:
+  ingress:
+    - host: {{ template "serverless-registry-api.host" . }}
