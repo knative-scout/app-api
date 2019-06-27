@@ -10,7 +10,7 @@ KUBE_TYPES ?= dc,configmap,secret,deploy,svc,route,is,pv,pvc
 # deploy to ENV
 deploy:
 	@if [ -z "${ENV}" ]; then echo "ENV must be set"; exit 1; fi
-	helm template --set env=${ENV} deploy | oc apply -f -
+	helm template --values deploy/values.yaml --set global.env=${ENV} deploy | oc apply -f -
 
 # deploy to production
 deploy-prod:

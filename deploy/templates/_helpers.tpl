@@ -4,9 +4,9 @@ Specialized .Values.host default value logic
 {{- define "serverless-registry-api.host" -}}
 {{- if .Values.host -}}
 {{ .Values.host }}
-{{- else if eq .Values.env "prod" -}}
+{{- else if eq .Values.global.env "prod" -}}
 api.kscout.io
 {{- else -}}
-{{ .Values.env }}-api.kscout.io
+{{ .Values.global.env }}-api.kscout.io
 {{- end -}}
 {{- end -}}
