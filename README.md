@@ -186,7 +186,7 @@ make deploy-prod
 If this is the first time production has been deployed run:
 
 ```
-oc rollout latest dc/prod-serverless-registry-api
+make rollout-prod
 ```
 
 The `master` branch will automatically be deployed to the `prod` environment.  
@@ -198,7 +198,7 @@ Spin up the staging environment if it doesn't exist already:
 
 ```
 make deploy-staging
-oc rollout latest dc/staging-serverless-registry-api
+make rollout-staging
 ```
 
 Build local code and deploy to environment:
