@@ -1,10 +1,35 @@
-# Deployment environment, usually "prod" or "staging"
-#env: 
+# Global shared chart configuration
+global:
+  # Deployment environment, usually "prod" or "staging"
+  #env: 
 
-# Host to deploy service under. Defaults to www.kscout.io if env is prod.
-# Otherwise defaults to ENV-www.kscout.io
-#host: 
-
-# Configures mongo sub-chart
-mongo:
+  # App being deployed
   app: serverless-registry-api
+
+# HTTP service chart
+http:
+  # Serve under host
+  defaultHost: &defaultHost api.kscout.io
+
+  # Internal app container port
+  port: &port 5000
+
+  # Configuration
+  configMap:
+    - key: externalURL
+      value: *defaultHost
+      envKey: APP_EXTERNAL_URL
+    - key: httpAddr
+      value: ":*port"
+      envKey: APP_HTTP_ADDR
+    - key: ghPrivateKeyPath
+      value: /mnt/secret/ghPrivateKey
+      envKey: APP_GH_PRIVATE_KEY_PATH
+
+  # Mount secret under path
+  secretMount: /mnt/secret
+
+  # MongoDB
+  mongo:
+    # Pass Mongo credentials to app container
+    enabled: true
