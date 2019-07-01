@@ -9,7 +9,7 @@ APP ?= serverless-registry-api
 DOCKER_TAG ?= kscout/${APP}:${ENV}-latest
 
 KUBE_LABELS ?= app=${APP},env=${ENV}
-KUBE_TYPES ?= dc,configmap,secret,deploy,svc,route,is,pv,pvc
+KUBE_TYPES ?= dc,configmap,secret,deploy,statefulset,svc,route,is,pod,pv,pvc
 
 # rollout ENV
 rollout:
