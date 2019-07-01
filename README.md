@@ -157,18 +157,13 @@ choose `kscout/serverless-apps`.
 Click "Install".
 
 ## Deploy Configuration
-The following environment variables must be set (see
-[Development#Configuration](#development-configuration) for documentation of
-these variables):
+Create a copy of `deploy/values.secrets.example.yaml` named 
+`deploy/values.secrets.ENV.yaml` for whichever deployment environment you wish
+to configure.
 
-- `APP_DB_PASSWORD`
-- `APP_GH_INTEGRATION_ID`
-- `APP_GH_INSTALLATION_ID`
-- `APP_GH_WEBHOOK_SECRET`
-- `APP_GH_PRIVATE_KEY_PATH`
+Edit this file with your own values.
 
-The file indicated by `APP_GH_PRIVATE_KEY` must also contain the appropriate
-GitHub application's private key.
+Never commit this file.
 
 ## Deploy
 Initialize submodules:
