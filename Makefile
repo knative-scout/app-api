@@ -1,5 +1,7 @@
-.PHONY: rollout rollout-prod rollout-staging \
-	deploy-yaml deploy deploy-prod deploy-staging \
+.PHONY: push \
+	rollout rollout-prod rollout-staging \
+	imagestream-tag \
+	deploy deploy-prod deploy-staging \
 	rm-deploy \
 	docker docker-build docker-push
 
@@ -10,6 +12,11 @@ DOCKER_TAG ?= kscout/${APP}:${ENV}-latest
 
 KUBE_LABELS ?= app=${APP},env=${ENV}
 KUBE_TYPES ?= dc,configmap,secret,deploy,statefulset,svc,route,is,pod,pv,pvc
+
+KUBE_APPLY ?= oc apply -f -
+
+# push local code to ENV deploy
+push: docker imagestream-tag
 
 # rollout ENV
 rollout:
@@ -24,22 +31,18 @@ rollout-prod:
 rollout-staging:
 	${MAKE} rollout ENV=staging
 
-# display YAML resource definitions for ENV
-deploy-yaml:
+# import latest tag for ENV to imagestream
+imagestream-tag:
 	@if [ -z "${ENV}" ]; then echo "ENV must be set"; exit 1; fi
-	@helm template \
-		--values deploy/values.yaml \
-		--values deploy/values.secrets.${ENV}.yaml \
-		--set global.env=${ENV} deploy
+	oc tag docker.io/kscout/${APP}:${ENV}-latest ${ENV}-${APP}:${ENV}-latest --scheduled
 
 # deploy to ENV
 deploy:
 	@if [ -z "${ENV}" ]; then echo "ENV must be set"; exit 1; fi
 	helm template \
 		--values deploy/values.yaml \
-		--values deploy/values.secrets.${ENV}.yaml \
 		--set global.env=${ENV} deploy \
-	| oc apply -f -
+	| ${KUBE_APPLY}
 
 # deploy to production
 deploy-prod:
