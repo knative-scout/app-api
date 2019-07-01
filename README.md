@@ -157,31 +157,31 @@ choose `kscout/serverless-apps`.
 Click "Install".
 
 ## Deploy Configuration
-The following environment variables must be set (see
-[Development#Configuration](#development-configuration) for documentation of
-these variables):
+Create a copy of `deploy/values.secrets.example.yaml` named 
+`deploy/values.secrets.ENV.yaml` for whichever deployment environment you wish
+to configure.
 
-- `APP_DB_PASSWORD`
-- `APP_GH_INTEGRATION_ID`
-- `APP_GH_INSTALLATION_ID`
-- `APP_GH_WEBHOOK_SECRET`
-- `APP_GH_PRIVATE_KEY_PATH`
+Edit this file with your own values.
 
-The file indicated by `APP_GH_PRIVATE_KEY` must also contain the appropriate
-GitHub application's private key.
+Never commit this file.
 
 ## Deploy
-The template resource in [`deploy/template.yaml`](deploy/template.yaml) only has to 
-be deployed once. Or if it changes:
+Initialize submodules:
 
 ```
-./deploy/deploy.sh template-up
+git submodule update --init --recursive
 ```
 
-Spin up an environment:
+Deploy to production:
 
 ```
-./deploy/deploy.sh up -e ENV
+make deploy-prod
+```
+
+If this is the first time production has been deployed run:
+
+```
+make rollout-prod
 ```
 
 The `master` branch will automatically be deployed to the `prod` environment.  
@@ -192,11 +192,12 @@ Local code can be deployed to the staging environment.
 Spin up the staging environment if it doesn't exist already:
 
 ```
-./deploy/deploy.sh up -e staging
+make deploy-staging
+make rollout-staging
 ```
 
-Build local code and deploy to environment"
+Build local code and deploy to environment:
 
 ```
-./deploy/deploy.sh push -e staging
+make docker
 ```

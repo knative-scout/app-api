@@ -1,42 +1,71 @@
-.PHONY: docker docker-build docker-run docker-push db db-cli
+.PHONY: rollout rollout-prod rollout-staging \
+	deploy-yaml deploy deploy-prod deploy-staging \
+	rm-deploy \
+	docker docker-build docker-push
 
+MAKE ?= make
 
-DB_DATA_DIR ?= container-data/db
-DB_CONTAINER_NAME ?= kscout-serverless-registry-api-db
-DB_USER ?= kscout-dev
-DB_PASSWORD ?= secretpassword
+APP ?= serverless-registry-api
+DOCKER_TAG ?= kscout/${APP}:${ENV}-latest
 
-DOCKER_TAG_VERSION ?= dev-latest
-DOCKER_TAG ?= kscout/serverless-registry-api:${DOCKER_TAG_VERSION}
+KUBE_LABELS ?= app=${APP},env=${ENV}
+KUBE_TYPES ?= dc,configmap,secret,deploy,statefulset,svc,route,is,pod,pv,pvc
 
-# builds and pushes a docker image
+# rollout ENV
+rollout:
+	@if [ -z "${ENV}" ]; then echo "ENV must be set"; exit 1; fi
+	oc rollout latest dc/${ENV}-${APP}
+
+# rollout production
+rollout-prod:
+	${MAKE} rollout ENV=prod
+
+# rollout staging
+rollout-staging:
+	${MAKE} rollout ENV=staging
+
+# display YAML resource definitions for ENV
+deploy-yaml:
+	@if [ -z "${ENV}" ]; then echo "ENV must be set"; exit 1; fi
+	@helm template \
+		--values deploy/values.yaml \
+		--values deploy/values.secrets.${ENV}.yaml \
+		--set global.env=${ENV} deploy
+
+# deploy to ENV
+deploy:
+	@if [ -z "${ENV}" ]; then echo "ENV must be set"; exit 1; fi
+	helm template \
+		--values deploy/values.yaml \
+		--values deploy/values.secrets.${ENV}.yaml \
+		--set global.env=${ENV} deploy \
+	| oc apply -f -
+
+# deploy to production
+deploy-prod:
+	${MAKE} deploy ENV=prod
+
+# deploy to staging
+deploy-staging:
+	${MAKE} deploy ENV=staging
+
+# remove deployment for ENV
+rm-deploy:
+	@if [ -z "${ENV}" ]; then echo "ENV must be set"; exit 1; fi
+	@echo "Remove ${ENV} ${APP} deployment"
+	@echo "Hit any key to confirm"
+	@read confirm
+	oc get -l ${KUBE_LABELS} ${KUBE_TYPES} -o yaml | oc delete -f -
+
+# build and push docker image
 docker: docker-build docker-push
 
-# build Docker image
+# build docker image for ENV
 docker-build:
+	@if [ -z "${ENV}" ]; then echo "ENV must be set"; exit 1; fi
 	docker build -t ${DOCKER_TAG} .
 
-
-# Push to docker hub
+# push docker image for ENV
 docker-push:
+	@if [ -z "${ENV}" ]; then echo "ENV must be set"; exit 1; fi
 	docker push ${DOCKER_TAG}
-
-
-# Runs the docker image locally
-docker-run:
-	docker run -it --rm -e APP_GH_TOKEN=${APP_GH_TOKEN} -e APP_GH_WEBHOOK_SECRET=${APP_GH_WEBHOOK_SECRET} --net host ${DOCKER_TAG}
-
-
-# Start MongoDB server in container
-db:
-	mkdir -p ${DB_DATA_DIR}
-	docker run \
-		-it --rm --net host --name ${DB_CONTAINER_NAME} \
-		-v ${PWD}/${DB_DATA_DIR}:/data/db \
-		-e MONGO_INITDB_ROOT_USERNAME=${DB_USER} \
-		-e MONGO_INITDB_ROOT_PASSWORD=${DB_PASSWORD} \
-		mongo:latest
-
-# Runs mongo on shell
-db-cli:
-	docker run -it --rm --net host mongo:latest mongo -u ${DB_USER} -p ${DB_PASSWORD}

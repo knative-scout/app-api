@@ -6,5 +6,6 @@ container-data
 
 # Secrets
 .env
-secrets*
+*secrets*
+!deploy/values.secrets.example.yaml
 *.pem
