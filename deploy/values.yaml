@@ -9,18 +9,18 @@ global:
 # HTTP service chart
 http:
   # Serve under host
-  defaultHost: &defaultHost api.kscout.io
+  defaultHost: api.kscout.io
 
   # Internal app container port
-  port: &port 5000
+  port: 5000
 
   # Configuration
   configMap:
     - key: externalURL
-      value: *defaultHost
+      value: "{{ .Values.defaultHost }}"
       envKey: APP_EXTERNAL_URL
     - key: httpAddr
-      value: ":*port"
+      value: ":{{ .Values.port }}"
       envKey: APP_HTTP_ADDR
     - key: ghPrivateKeyPath
       value: /mnt/secret/ghPrivateKey
