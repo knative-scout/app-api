@@ -11,7 +11,7 @@ APP ?= serverless-registry-api
 DOCKER_TAG ?= kscout/${APP}:${ENV}-latest
 
 KUBE_LABELS ?= app=${APP},env=${ENV}
-KUBE_TYPES ?= dc,configmap,secret,deploy,statefulset,svc,route,is,pod,pv,pvc
+KUBE_TYPES ?= dc,configmap,secret,deploy,statefulset,svc,route,is,pod,pvc
 
 KUBE_APPLY ?= oc apply -f -
 
@@ -59,7 +59,12 @@ rm-deploy:
 	@echo "Remove ${ENV} ${APP} deployment"
 	@echo "Hit any key to confirm"
 	@read confirm
-	oc get -l ${KUBE_LABELS} ${KUBE_TYPES} -o yaml | oc delete -f -
+	oc get \
+		--ignore-not-found \
+		-l ${KUBE_LABELS} \
+		${KUBE_TYPES} \
+		-o yaml \
+	| oc delete -f -
 
 # build and push docker image
 docker: docker-build docker-push
