@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"encoding/json"
+	"net/url"
 	
 	"github.com/kelseyhightower/envconfig"
 )
@@ -12,7 +13,10 @@ type Config struct {
 	// ExternalURL is the host the HTTP server can be accessed by from external users.
 	// This should include any URL scheme, ports, paths, subdomains, ect. Should not
 	// include a trailing slash.
-	ExternalURL string `default:"http://localhost:5000" split_words:"true" required:"true"`
+	ExternalURL url.URL `default:"http://localhost:5000" split_words:"true" required:"true"`
+
+	// SiteURL is the URL at which the website can be accessed
+	SiteURL url.URL `default:"https://kscout.io" split_words:"true" required:"true"`
 	
 	// HTTPAddr is the HTTP server's bind address
 	HTTPAddr string `default:":5000" split_words:"true" required:"true"`
@@ -60,6 +64,7 @@ type Config struct {
 
 // NewConfig loads configuration values from environment variables
 func NewConfig() (*Config, error) {
+	// Get
 	var config Config
 
 	if err := envconfig.Process("app", &config); err != nil {
@@ -72,6 +77,7 @@ func NewConfig() (*Config, error) {
 
 // String returns a log safe version of Config in string form. Redacts any sensative fields.
 func (c Config) String() (string, error) {
+	// Redact fields
 	if c.DbPassword != "" {
 		c.DbPassword = "REDACTED_NOT_EMPTY"
 	}
@@ -80,6 +86,7 @@ func (c Config) String() (string, error) {
 		c.GhWebhookSecret = "REDACTED_NOT_EMPTY"
 	}
 
+	// Convert to JSON
 	configBytes, err := json.Marshal(c)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert configuration into JSON: %s", err.Error())

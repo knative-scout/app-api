@@ -44,6 +44,6 @@ func (h DeployInstructionsHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 			". <(curl -L %s/apps/id/%s/deploy.sh)\n"+
 			"```",
 			app.Name,
-			h.Cfg.ExternalURL, app.AppID),
+			h.Cfg.ExternalURL.String(), app.AppID),
 	})
 }

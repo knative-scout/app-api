@@ -61,7 +61,9 @@ for these fields follows:
 
 - `APP_EXTERNAL_URL` (String): External URL from which HTTP server can
   be accessed. Should include any URL schemes, ports, paths, subdomains, ect.
-  Should not include a trailing slash.
+  Should not include a trailing slash. Defaults to `http://localhost:5000`.
+- `APP_SITE_URL` (String): URL at which the site can be accessed, defaults
+  to `https://kscout.io`
 - `APP_HTTP_ADDR` (String): Address to bind server, defaults to `:5000`
 - `APP_DB_HOST` (String): MongoDB host, defaults to `localhost`
 - `APP_DB_PORT` (Integer): MongoDB port, defaults to `27017`

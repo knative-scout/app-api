@@ -65,6 +65,7 @@ Schema:
 - `author` (Object)
   - `name` (String)
   - `email` (String)
+- `site_url` (String)
 
 ## Resource Model
 `resource` collection.
