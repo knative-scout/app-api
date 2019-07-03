@@ -21,6 +21,15 @@ type WebhookHandler struct {
 	JobRunner *jobs.JobRunner
 }
 
+// ComputeGHWebhookSignature creates the expected X-Hub-Signature header value for a body.
+// WARNING: Compare the resulting signature with crypto/hmax.Equal for security purposes.
+func ComputeGHWebhookSignature(secret, body []byte) string {
+	bodyHMAC := hmac.New(sha1.New, secret)
+	bodyHMAC.Write(body)
+
+	return fmt.Sprintf("sha1=%s", hex.EncodeToString(bodyHMAC.Sum(nil)))
+}
+
 // ServeHTTP implements net.Handler
 func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// {{{1 Verify request came from GitHub
@@ -41,10 +50,7 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		panic(fmt.Errorf("failed to read request body: %s", err.Error()))
 	}
 
-	bodyHMAC := hmac.New(sha1.New, []byte(h.Cfg.GhWebhookSecret))
-	bodyHMAC.Write(bodyBytes)
-
-	actualSig := fmt.Sprintf("sha1=%s", hex.EncodeToString(bodyHMAC.Sum(nil)))
+	actualSig := ComputeGHWebhookSignature([]byte(h.Cfg.GhWebhookSecret), bodyBytes)
 
 	// {{{2 Compare
 	if !hmac.Equal([]byte(expectedSig), []byte(actualSig)) {
@@ -80,7 +86,7 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				err.Error()))
 		}
 
-		h.Logger.Debugf("received pull request event: %#v", event)
+		h.Logger.Debugf("received pull request event: %s", bodyBytes)
 
 		// {{{2 Start job if PR was just opened or just merged
 		if *event.Action == "opened" {
@@ -109,7 +115,7 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				err.Error()))
 		}
 
-		h.Logger.Debugf("received check suite event: %#v", event)
+		h.Logger.Debugf("received check suite event: %s", bodyBytes)
 
 		// {{{2 Start job for each pull request
 		checkSuite := *event.CheckSuite
@@ -140,8 +146,23 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// {{{3 Submit validate job for each PR
 		for _, pr := range prs {
 			// {{{3 Skip merged PRs
-			if *pr.Merged {
-				continue
+			if pr.Merged != nil {
+				if *pr.Merged {
+					continue
+				}
+			} else { // Some PRs do not have a populated Merged field so we must get it
+				pr, _, err := h.Gh.PullRequests.Get(h.Ctx,
+					h.Cfg.GhRegistryRepoOwner, h.Cfg.GhRegistryRepoName,
+					*pr.Number)
+				if err != nil {
+					panic(fmt.Errorf("failed to get PR details to see if "+
+						"already merged for PR #%d: %s", *pr.Number,
+						err.Error()))
+				}
+
+				if *pr.Merged {
+					continue
+				}
 			}
 			
 			h.Logger.Debugf("submited validate job for PR #%d", *pr.Number)
