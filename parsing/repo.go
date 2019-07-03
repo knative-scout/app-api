@@ -165,15 +165,23 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 	}
 	
 	for _, content := range dirContents {
+		// fullType is the content.Type field but gaurenteed to be a full english word
+		// Needed because when content is a directory content.Type = "dir" which is not
+		// a full word. Looks bad when presented to users.
+		fullType := "file"
+		if *content.Type == "dir" {
+			fullType = "directory"
+		}
+		
 		// what will be used as the ParseError.What field value if necessary
-		what := fmt.Sprintf("`%s` %s", *content.Name, *content.Type)
+		what := fmt.Sprintf("`%s` %s", *content.Name, fullType)
 		
 		// {{{2 Check if file / directory is supposed to be there
 		if _, ok := allowedContent[*content.Name]; !ok {
 			errs = append(errs, ParseError{
 				What: what,
 				Why: fmt.Sprintf("not allowed in an app directory"),
-				FixInstructions: fmt.Sprintf("delete this %s", *content.Type),
+				FixInstructions: fmt.Sprintf("delete this %s", fullType),
 			})
 			continue
 		}
