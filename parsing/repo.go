@@ -147,30 +147,28 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 	app.GitHubURL = fmt.Sprintf("https://github.com/%s/%s/tree/%s/%s",
 		p.RepoOwner, p.RepoName, ghURLRef, id)
 
-	// found tracks if a file / directory has been found in the registry
-	found := map[string]bool{
-		"manifest.yaml": false,
-		"README.md": false,
-		"logo.png": false,
-		"deployment": false,
+	// allowedContent is a map set of the allowed names of content in an app directory
+	allowedContent := map[string]bool{
+		"manifest.yaml": true,
+		"README.md": true,
+		"logo.png": true,
+		"deployment": true,
+		"screenshots": true,
 	}
 	
 	for _, content := range dirContents {
-		// whatFile will be used as the ParseError.What field value if necessary
-		whatFile := fmt.Sprintf("`%s` file", *content.Name)
+		// what will be used as the ParseError.What field value if necessary
+		what := fmt.Sprintf("`%s` %s", *content.Name, *content.Type)
 		
 		// {{{2 Check if file / directory is supposed to be there
-		if _, ok := found[*content.Name]; !ok {
+		if _, ok := allowedContent[*content.Name]; !ok {
 			errs = append(errs, ParseError{
-				What: whatFile,
-				Why: fmt.Sprintf("not allowed in an app directory",
-					*content.Name),
-				FixInstructions: "delete this file",
+				What: what,
+				Why: fmt.Sprintf("not allowed in an app directory"),
+				FixInstructions: fmt.Sprintf("delete this %s", *content.Type),
 			})
 			continue
 		}
-
-		found[*content.Name] = true
 
 		// {{{2 Parse file / directory for app info
 		switch *content.Type {
@@ -182,7 +180,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					*content.Name))
 				if err != nil {
 					errs = append(errs, ParseError{
-						What: whatFile,
+						What: what,
 						Why: "failed to get contents from the GitHub API",
 						InternalError: err,
 					})
@@ -194,7 +192,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				err = yaml.Unmarshal([]byte(txt), &manifest)
 				if err != nil {
 					errs = append(errs, ParseError{
-						What: whatFile,
+						What: what,
 						Why: fmt.Sprintf("failed to parse file as "+
 							"YAML: %s", err.Error()),
 						FixInstructions: "fix any YAML syntax errors",
@@ -222,7 +220,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					*content.Name))
 				if err != nil {
 					errs = append(errs, ParseError{
-						What: whatFile,
+						What: what,
 						Why: "failed to get file content, the GitHub "+
 							"API returned any error response",
 						InternalError: err,
@@ -235,16 +233,13 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				app.LogoURL = *content.DownloadURL
 			}
 		case "dir":
-			// whatDir is used as the ParseError.What field value is necessary
-			whatDir := fmt.Sprintf("`%s` directory", *content.Name)
-			
 			switch *content.Name {
 			case "screenshots":
 				// {{{2 Get files in screenshots directory
 				urls, err := p.GetDownloadURLs(fmt.Sprintf("%s/screenshots", id))
 				if err != nil {
 					errs = append(errs, ParseError{
-						What: whatDir,
+						What: what,
 						Why: "failed to list files in the directory "+
 							"using the GitHub API, an error "+
 							"response was returned",
@@ -265,7 +260,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					})
 				if err != nil {
 					errs = append(errs, ParseError{
-						What: whatDir,
+						What: what,
 						Why: "failed to list files in the directory "+
 							"using the GitHub API, an error "+
 							"response was returned",
@@ -333,7 +328,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					resourceJSON, err := yaml.YAMLToJSON(resourceYAML)
 					if err != nil {
 						errs = append(errs, ParseError{
-							What: whatDir,
+							What: what,
 							Why: "failed to convert YAML to JSON",
 							InternalError: err,
 						})
@@ -346,7 +341,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					err = json.Unmarshal(resourceJSON, &resourceType)
 					if err != nil {
 						errs = append(errs, ParseError{
-							What: whatDir,
+							What: what,
 							Why: "failed to parse resource type information",
 							InternalError: err,
 						})
@@ -356,7 +351,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					// {{{3 Do not allow namespace resources in the deployment
 					if resourceType.Kind == "Namespace" {
 						errs = append(errs, ParseError{
-							What: whatDir,
+							What: what,
 							Why: "resources of type Namespace are not allowed",
 							FixInstructions: "remove all Namespace resources",
 						})
@@ -369,7 +364,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					err = json.Unmarshal(resourceJSON, &resourceMeta)
 					if err != nil {
 						errs = append(errs, ParseError{
-							What: whatDir,
+							What: what,
 							Why: "failed to parse resource metadata information",
 							InternalError: err,
 						})
@@ -379,7 +374,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					// {{{3 Do not allow resources with a namespace field
 					if len(resourceMeta.Namespace) > 0 {
 						errs = append(errs, ParseError{
-							What: whatDir,
+							What: what,
 							Why: "resources may not have a metadata.namespace field",
 							FixInstructions: "ensure resources do not have a metadata.namespace field",
 						})
@@ -406,7 +401,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						err := json.Unmarshal(resourceJSON, &secret)
 						if err != nil {
 							errs = append(errs, ParseError{
-								What: whatDir,
+								What: what,
 								Why: "failed to parse resource as v1.Secret",
 								InternalError: err,
 							})
@@ -433,7 +428,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						resourceJSON, err = json.Marshal(secret)
 						if err != nil {
 							errs = append(errs, ParseError{
-								What: whatDir,
+								What: what,
 								Why: "failed to save resource as JSON",
 								InternalError: err,
 							})
@@ -447,7 +442,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						err := json.Unmarshal(resourceJSON, &configMap)
 						if err != nil {
 							errs = append(errs, ParseError{
-								What: whatDir,
+								What: what,
 								Why: "failed to parse resource as v1.ConfigMap",
 								InternalError: err,
 							})
@@ -474,7 +469,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						resourceJSON, err = json.Marshal(configMap)
 						if err != nil {
 							errs = append(errs, ParseError{
-								What: whatDir,
+								What: what,
 								Why: "failed to save resource as JSON",
 								InternalError: err,
 							})

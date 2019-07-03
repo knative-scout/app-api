@@ -139,6 +139,11 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// {{{3 Submit validate job for each PR
 		for _, pr := range prs {
+			// {{{3 Skip merged PRs
+			if *pr.Merged {
+				continue
+			}
+			
 			h.Logger.Debugf("submited validate job for PR #%d", *pr.Number)
 			
 			// {{{3 Marshal PR back to bytes

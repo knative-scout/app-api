@@ -13,11 +13,11 @@ import (
 // JobTypeT is used to specify what type of job to start
 type JobTypeT string
 
-// JobTypeUpdateApps identifies a job of type UpdateApps
-var JobTypeUpdateApps JobTypeT = "update_apps"
-
-// JobTypeValidate identifies a job of type Validate
-var JobTypeValidate JobTypeT = "validate"
+// Job types identify different jobs which can be run
+const (
+	JobTypeUpdateApps JobTypeT = "update_apps"
+	JobTypeValidate  = "validate"
+)
 
 // JobStartRequest provides informtion required to start a job
 type JobStartRequest struct {
@@ -28,7 +28,7 @@ type JobStartRequest struct {
 	Data []byte
 
 	// CompleteChan will close when the job has been completed. This
-	// does not gaurentee the job finished successfully
+	// does not guarantee the job finished successfully
 	CompleteChan chan interface{}
 }
 
