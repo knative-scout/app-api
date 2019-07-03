@@ -38,6 +38,7 @@ func (j UpdateAppsJob) Do(data []byte) error {
 		Ctx: j.Ctx,
 		GH: j.GH,
 		GHDevTeamName: j.Cfg.GhDevTeamName,
+		SiteURL: j.Cfg.SiteURL,
 		RepoOwner: j.Cfg.GhRegistryRepoOwner,
 		RepoName: j.Cfg.GhRegistryRepoName,
 		RepoRef: "master",

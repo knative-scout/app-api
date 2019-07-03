@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"crypto/sha256"
+	"net/url"
 
 	"github.com/kscout/serverless-registry-api/models"
 	"github.com/kscout/serverless-registry-api/validation"
@@ -31,6 +32,9 @@ type RepoParser struct {
 
 	// GHDevTeamName is the name of the GitHub team to ping when an internal error occurs
 	GHDevTeamName string
+
+	// SiteURL is the URL at which the website can be accessed
+	SiteURL url.URL
 
 	// RepoOwner is the owner of the repository
 	RepoOwner string
@@ -139,6 +143,10 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 
 	app.AppID = id
 	app.VerificationStatus = "pending"
+
+	siteURL := p.SiteURL
+	siteURL.Path = fmt.Sprintf("/apps/%s", id)
+	app.SiteURL = siteURL.String()
 
 	ghURLRef := "master"
 	if len(p.RepoRef) > 0 {

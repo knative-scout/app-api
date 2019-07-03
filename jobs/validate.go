@@ -77,6 +77,8 @@ func (j ValidateJob) Do(data []byte) error {
 	repoParser := parsing.RepoParser{
 		Ctx: j.Ctx,
 		GH: j.GH,
+		GHDevTeamName: j.Cfg.GhDevTeamName,
+		SiteURL: j.Cfg.SiteURL,
 		RepoOwner: j.Cfg.GhRegistryRepoOwner,
 		RepoName: j.Cfg.GhRegistryRepoName,
 		RepoRef: *pr.Head.Ref,
