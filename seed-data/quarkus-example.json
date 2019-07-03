@@ -6,7 +6,7 @@
 	"quarkus"
     ],
     "categories": [
-	"examples"
+	"hello world"
     ],
     "app_id": "serverless-example-quarkus",
     "description": "# Serverless Example Quarkus\nHello world.",
@@ -16,8 +16,17 @@
     "deployment_file_urls": [
 	"https://example.com/does-not-exist.yaml"
     ],
-    "author": "Noah Huppert <nhuppert@redhat.com>",
-    "maintainer": "Noah Huppert <nhuppert@redhat.com>",
+    "author": {
+	"name": "Noah Huppert",
+	"email": "nhuppert@redhat.com"
+    },
     "version": "abcdefg",
-    "verification_status": "pending"
+    "verification_status": "pending",
+    "site_url": "https://kscout.io/apps/severless-example-quarkus",
+    "deployment": {
+	"resources": [ "foo" ],
+	"parameterized_resources": [ "foo" ],
+	"parameters": [],
+	"deploy_script": "echo \"I'm not a real deloy script\""
+    }
 }
