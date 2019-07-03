@@ -100,8 +100,8 @@ func (j ValidateJob) Do(data []byte) error {
 		"\n  "
 
 	statusTable := ""+
-		"| App ID | Status | Comment |  \n"+
-		"| ------ | ------ | ------- |  \n"
+		"| App ID | Status | Comment |\n"+
+		"| ------ | ------ | ------- |\n"
 
 	internalErr := false
 	
@@ -129,7 +129,7 @@ func (j ValidateJob) Do(data []byte) error {
 			comment = ":+1:"
 		}
 
-		statusTable += fmt.Sprintf("| %s | %s | %s |", appID, status, comment)
+		statusTable += fmt.Sprintf("| %s | %s | %s |\n", appID, status, comment)
 	}
 
 	commentBody += statusTable
