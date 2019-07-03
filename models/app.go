@@ -42,6 +42,9 @@ type App struct {
 
 	// Version is the semantic version of the app
 	Version string `json:"version" bson:"version" validate:"required"`
+
+	// SiteURL is a link to the application on the website
+	SiteURL string `json:"site_url" bson:"site_url" validate:"required"`
 }
 
 // ContactInfo
