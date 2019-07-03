@@ -165,7 +165,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 			errs = append(errs, ParseError{
 				What: what,
 				Why: fmt.Sprintf("not allowed in an app directory"),
-				FixInstructions: "delete this file",
+				FixInstructions: fmt.Sprintf("delete this %s", *content.Type),
 			})
 			continue
 		}
