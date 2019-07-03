@@ -6,7 +6,7 @@ API which curates serverless applications.
 - [Development](#development)
   - [Database](#database)
   - [Configuration](#development-configuration)
-n  - [Run](#run)
+  - [Run](#run)
   - [Advanced Run](#advanced-run)
 - [Deployment](#deployment)
   - [GitHub App](#github-app)
