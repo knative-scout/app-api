@@ -63,14 +63,10 @@ func (j ValidateJob) Do(data []byte) error {
 		RepoRef: *pr.Head.Ref,
 		PRNumber: *pr.Number,
 	}
-	appIDs, err := prParser.GetModifiedAppIDs()
+	appIDs, deletedAppIDs, err := prParser.GetModifiedAppIDs()
 	if err != nil {
 		return fmt.Errorf("failed to get IDs of app modified in PR: %s",
 			err.Error())
-	}
-
-	if len(appIDs) == 0 {
-		return nil
 	}
 
 	// {{{1 Load each application
@@ -104,7 +100,8 @@ func (j ValidateJob) Do(data []byte) error {
 		"| ------ | ------ | ------- |\n"
 
 	internalErr := false
-	
+
+	// {{{3 For modified apps
 	for _, appID := range appIDs {
 		status := ""
 		comment := ""
@@ -130,6 +127,11 @@ func (j ValidateJob) Do(data []byte) error {
 		}
 
 		statusTable += fmt.Sprintf("| %s | %s | %s |\n", appID, status, comment)
+	}
+
+	// {{{3 For deleted apps
+	for _, deletedAppID := range deletedAppIDs {
+		statusTable += fmt.Sprintf("| %s | Deleted | :wastebasket: |\n", deletedAppID)
 	}
 
 	commentBody += statusTable
@@ -172,6 +174,11 @@ func (j ValidateJob) Do(data []byte) error {
 	}
 
 	commentBody += errsDetails
+
+	// {{{2 Check if the above code would generate an empty table
+	if len(appIDs) == 0 && len(deletedAppIDs) == 0 {
+		commentBody = "No applications modified"
+	}
 
 	commentBody += "  \n---  \n"+
 		"*I am a bot*"
