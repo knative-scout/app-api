@@ -10,6 +10,8 @@ import (
 	"flag"
 	"path/filepath"
 	"encoding/json"
+	"io/ioutil"
+	"bytes"
 
 	"github.com/kscout/serverless-registry-api/config"
 	"github.com/kscout/serverless-registry-api/handlers"
@@ -25,6 +27,18 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"github.com/bradleyfalzon/ghinstallation"
 )
+
+// bytesReaderCloser implements the Close method ontop of a bytes.Reader.
+// Used by the -mock-webhook and -mock-webhook-event flags to pass a file's
+// contents to net/http.Request.Body.
+type bytesReadCloser struct {
+	*bytes.Reader
+}
+
+// Close implements a meaningless close method for bytesReadCloser
+func (b bytesReadCloser) Close() error {
+	return nil
+}
 
 func main() {
 	// {{{1 Context
@@ -175,6 +189,14 @@ func main() {
 	// specified num
 	var doValidatePRNum string
 
+	// doMockWebhook indicates that the server should make a request to webhook endpoint 
+	// located at host config.Config.ExternalURL. The value should be the name of a file
+	// which contains the request body
+	var doMockWebhook string
+
+	// mockWebhookEvent is the X-Github-Event header value for the mock webhook request.
+	var mockWebhookEvent string
+
 	flag.BoolVar(&doUpdateJob, "update-apps", false,
 		"If provided server will run one update job and exit. Must be only "+
 			"flag provided.")
@@ -185,6 +207,13 @@ func main() {
 	flag.StringVar(&doValidatePRNum, "validate-pr", "",
 		"If provided will run a validate job for the GitHub pull request with the "+
 			"provided number. Must be the only flag provided")
+	flag.StringVar(&doMockWebhook, "mock-webhook", "",
+		"If provided will make a request to the server's webhook endpoint. The body"+
+			"of this request will be the contents of the file specified by "+
+			"this option. The -mock-webhook-event option must be the only other option")
+	flag.StringVar(&mockWebhookEvent, "mock-webhook-event", "",
+		"X-Github-Event header value for mock webhook request, -mock-webhook must be only "+
+			"other option provided.")
 	flag.Parse()
 
 	// {{{2 Do actions
@@ -194,7 +223,7 @@ func main() {
 		<-req.CompleteChan
 		os.Exit(0)
 	} else if doSeed {
-		logger.Info("reading seed data")
+		logger.Info("seeding database then exiting")
 
 		// for each file in the seed data directory
 		err := filepath.Walk("./seed-data",
@@ -251,7 +280,8 @@ func main() {
 
 		os.Exit(1)
 	} else if len(doValidatePRNum) > 0 {
-		logger.Infof("will launch validate job for PR #%s", doValidatePRNum)
+		logger.Infof("launching validate job for PR #%s then exiting",
+			doValidatePRNum)
 
 		// Convert pr number into integer
 		prNum, err := strconv.Atoi(doValidatePRNum)
@@ -275,6 +305,64 @@ func main() {
 		}
 		req := jobRunner.Submit(jobs.JobTypeValidate, prBytes)
 		<-req.CompleteChan
+		os.Exit(0)
+	} else if len(doMockWebhook) > 0 {
+		if len(mockWebhookEvent) == 0 {
+			logger.Fatalf("-mock-webhook requires -mock-webhook-event be specified")
+		}
+		
+		logger.Info("making mock request to webhook endpoint then exiting")
+
+		// Read body file
+		bodyF, err := os.Open(doMockWebhook)
+		if err != nil {
+			logger.Fatalf("failed to open file specified by option "+
+				"for use as mock request body: %s", err.Error())
+		}
+
+		bodyBytes, err := ioutil.ReadAll(bodyF)
+		if err != nil {
+			logger.Fatalf("failed to read file specified by option "+
+				"for use as mock request body: %s", err.Error())
+		}
+
+		bodyReader := bytes.NewReader(bodyBytes)
+
+		bodyReadCloser := bytesReadCloser{
+			bodyReader,
+		}
+
+		// Make webhook request signature
+		sig := handlers.ComputeGHWebhookSignature([]byte(cfg.GhWebhookSecret), bodyBytes)
+
+		// Make request
+		webhookURL := cfg.ExternalURL
+		webhookURL.Path = "/apps/webhook"
+
+		req := http.Request{
+			Method: "POST",
+			URL: &webhookURL,
+			Header: map[string][]string{
+				"X-Hub-Signature": {sig},
+				"X-Github-Event": {mockWebhookEvent},
+				"Conent-Type": {"application/json"},
+			},
+			Body: bodyReadCloser,
+		}
+		
+		resp, err := http.DefaultClient.Do(&req)
+		if err != nil {
+			logger.Fatalf("failed to make mock webhook request: %s", err.Error())
+		}
+
+		respBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			logger.Fatalf("failed to read mock webhook response body: %s", err.Error())
+		}
+
+		logger.Info("mock response:")
+		logger.Info(resp.Status)
+		logger.Info(string(respBytes))
 		os.Exit(0)
 	}
 
