@@ -30,8 +30,9 @@ type PRParser struct {
 	PRNumber int
 }
 
-// GetModifiedAppIDs returns the IDs of the serverless applications modified in a pull request.
-func (p PRParser) GetModifiedAppIDs() ([]string, error) {
+// GetModifiedAppIDs returns IDs of applications modified in pull request and IDs of applications
+// deleted in pull request.
+func (p PRParser) GetModifiedAppIDs() ([]string, []string, error) {
 	// {{{1 Get files in PR
 	prFiles, _, err := p.GH.PullRequests.ListFiles(p.Ctx, p.RepoOwner, p.RepoName, 
 		p.PRNumber, &github.ListOptions{
@@ -39,7 +40,7 @@ func (p PRParser) GetModifiedAppIDs() ([]string, error) {
 			PerPage: 300, // 300 is the max number ever returned by this endpoint
 		})
 	if err != nil {
-		return nil, fmt.Errorf("error listing PR files: %s", err.Error())
+		return nil, nil, fmt.Errorf("error listing PR files: %s", err.Error())
 	}
 	
 	// {{{1 Parse file paths
@@ -89,7 +90,7 @@ func (p PRParser) GetModifiedAppIDs() ([]string, error) {
 	
 	presentAppIDs, err := repoParser.GetAppIDs()
 	if err != nil {
-		return nil, fmt.Errorf("error getting IDs of apps in PR head: %s", err.Error())
+		return nil, nil, fmt.Errorf("error getting IDs of apps in PR head: %s", err.Error())
 	}
 
 	presentAppIDsSet := map[string]bool{}
@@ -97,10 +98,13 @@ func (p PRParser) GetModifiedAppIDs() ([]string, error) {
 		presentAppIDsSet[presentAppID] = true
 	}
 
+	deletedAppIDs := []string{}
+	
 	for modifiedAppID, _ := range modifiedApps {
 		// If app in modifiedApps but not in PR head
 		if _, ok := presentAppIDsSet[modifiedAppID]; !ok {
 			delete(modifiedApps, modifiedAppID)
+			deletedAppIDs = append(deletedAppIDs, modifiedAppID)
 		}
 	}
 
@@ -111,5 +115,5 @@ func (p PRParser) GetModifiedAppIDs() ([]string, error) {
 		appIDs = append(appIDs, appID)
 	}
 
-	return appIDs, nil
+	return appIDs, deletedAppIDs, nil
 }
