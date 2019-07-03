@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"encoding/json"
+	"net/url"
 	
 	"github.com/kelseyhightower/envconfig"
 )
@@ -13,6 +14,8 @@ type Config struct {
 	// This should include any URL scheme, ports, paths, subdomains, ect. Should not
 	// include a trailing slash.
 	ExternalURL string `default:"http://localhost:5000" split_words:"true" required:"true"`
+	// SiteURL is the URL at which the website can be accessed
+	SiteURL url.URL `default:"https://kscout.io" split_words:"true" required:"true"`
 	
 	// HTTPAddr is the HTTP server's bind address
 	HTTPAddr string `default:":5000" split_words:"true" required:"true"`
