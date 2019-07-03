@@ -6,7 +6,7 @@ API which curates serverless applications.
 - [Development](#development)
   - [Database](#database)
   - [Configuration](#development-configuration)
-  - [Run](#run)
+n  - [Run](#run)
   - [Advanced Run](#advanced-run)
 - [Deployment](#deployment)
   - [GitHub App](#github-app)
@@ -116,6 +116,26 @@ go run . -validate-pr PR_NUM
 This will ensure the applications modified by the PR are correctly formatted.  
 The job will set a check run status and make a comment on the PR based on the
 results of the format validation.
+
+### Mock Webhook Request
+To make a mock webhook request to the 
+[app pull request webhook](DESIGN.md#app-pull-request-webhook) pass the 
+`-mock-webhook REQ_BODY_FILE` and `-mock-webhook-event EVENT_NAME` flags:
+
+```
+go run . -mock-webhook REQ_BODY_FILE -mock-webhook-event EVENT_NAME
+```
+
+`REQ_BODY_FILE` should be the name of a JSON file which will be sent as the 
+request body.  
+`EVENT_NAME` should be the name of a GitHub event which will be sent as the
+`X-Github-Event` header value.
+
+This will make an HTTP POST request to the server specified by the 
+`APP_EXTERNAL_URL` configuration environment variable.  
+This request will contain the `X-Hub-Signature` header which is a signed 
+HMAC of the request body. The `APP_GITHUB_WEBHOOK_SECRET` key will be used
+to sign this HMAC.
 
 # Deployment
 The [`deploy/template.yaml`](deploy/template.yaml) file defines a
