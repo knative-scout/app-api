@@ -150,7 +150,7 @@ made to submit an app.
 Request:
 
 - [GitHub Webhook Request](https://developer.github.com/webhooks/#payloads)
-- [`PullRequestEvent'](https://developer.github.com/v3/activity/events/types/#pullrequestevent)
+- [`PullRequestEvent`](https://developer.github.com/v3/activity/events/types/#pullrequestevent)
 
 Response: None
 
