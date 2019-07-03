@@ -140,7 +140,7 @@ func (h WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// {{{3 Submit validate job for each PR
 		for _, pr := range prs {
 			// {{{3 Skip merged PRs
-			if pr.Merged {
+			if *pr.Merged {
 				continue
 			}
 			
