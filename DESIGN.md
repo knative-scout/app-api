@@ -35,8 +35,6 @@ Responses will always return JSON.
 
 Stored in the `apps` collection.  
 
-[Documentation of schema fields](https://godoc.org/github.com/kscout/serverless-registry-api/models#App)
-
 Schema:
 
 - `app_id` (String)
