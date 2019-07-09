@@ -11,7 +11,7 @@ import (
 )
 
 
-// AppsDeployHandler is used to send deploy.sh file in curl to users' terminal
+// AppsDeployHandler returns a custom Bash deployment script for the specified app
 type AppsDeployHandler struct {
 	BaseHandler
 }

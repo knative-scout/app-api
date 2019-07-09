@@ -6,14 +6,13 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"strings"
 
-	//"go.mongodb.org/mongo-driver/mongo/options"
 	"net/http"
 	"github.com/gorilla/mux"
 	"github.com/kscout/serverless-registry-api/models"
 )
 
 
-// AppsDeployHandler is used to send deploy.sh file in curl to users' terminal
+// AppsDeployResourcesHandler returns JSON formatted Kubernetes resource manifests for the specified app
 type AppsDeployResourcesHandler struct {
 	BaseHandler
 }

@@ -31,7 +31,9 @@ Responses will always return JSON.
 
 # Data Model
 ## App Model
-`apps` collection.
+[Godoc](https://godoc.org/github.com/kscout/serverless-registry-api/models#App)  
+
+Stored in the `apps` collection.  
 
 [Documentation of schema fields](https://godoc.org/github.com/kscout/serverless-registry-api/models#App)
 
@@ -68,7 +70,9 @@ Schema:
 - `site_url` (String)
 
 ## Resource Model
-`resource` collection.
+**Not implemented**  
+
+Stored in the `resources` collection.
 
 Schema:
 
@@ -78,6 +82,8 @@ Schema:
 - `author` (String)
 
 # Endpoints
+[Godoc](https://godoc.org/github.com/kscout/serverless-registry-api/handlers)  
+
 Most endpoints to not require authentication.  
 
 Those which do will be marked. Provide authentication as a bearer token in the
@@ -88,6 +94,8 @@ JSON: `{"ok": true}`.
 
 ## App Endpoints
 ### Search Apps
+[Godoc](https://godoc.org/github.com/kscout/serverless-registry-api/handlers#AppSearchHandler)  
+
 `GET /apps?query=<query>&tags=<tags>&categories=<categories>`
 
 Search serverless apps in hub.
@@ -105,6 +113,8 @@ Response:
 - `apps` (List[[App Model](#app-model)])
 
 ### Natural Search
+[Godoc](https://godoc.org/github.com/kscout/serverless-registry-api/handlers#SmartSearchHandler)  
+
 `GET /nsearch?query=<query>`
 
 Search serverless apps in hub using natural language query.
@@ -126,9 +136,9 @@ Response:
 
 - `apps` (List[[App Model](#app-model)])
 
-
-
 ### Get App By ID
+[Godoc](https://godoc.org/github.com/kscout/serverless-registry-api/handlers#AppByIDHandler)  
+
 `GET /apps/id/<app_id>`
 
 Get application by ID.
@@ -142,6 +152,8 @@ Response:
 - `app` ([App Model](#app-model))
 
 ### App Pull Request Webhook
+[Godoc](https://godoc.org/github.com/kscout/serverless-registry-api/handlers#WebhookHandler)  
+
 `POST /apps/webhook`
 
 GitHub will make a request to this endpoint every time a new pull request is 
@@ -155,6 +167,8 @@ Request:
 Response: None
 
 ### Search Tags
+[Godoc](https://godoc.org/github.com/kscout/serverless-registry-api/handlers#AppTagsHandler)  
+
 `GET /apps/tags?query=<query>`
 
 Get all available tags.
@@ -168,6 +182,8 @@ Response:
 - `tags` (List[String])
 
 ### Search Categories
+[Godoc](https://godoc.org/github.com/kscout/serverless-registry-api/handlers#AppCategoriesHandler)  
+
 `GET /apps/categories?query=<query>`
 
 Get all available categories.
@@ -182,6 +198,8 @@ Response:
 - `categories` (List[String])
 
 ### Get Deployment File
+[Godoc](https://godoc.org/github.com/kscout/serverless-registry-api/handlers#AppsDeployResourcesHandler)  
+
 `GET /apps/id/<app_id>/deployment.json`  
 
 Get file with all an app's deployment resources.
@@ -193,6 +211,8 @@ Request:
 Response: JSON text of deployment resources
 
 ### Get Deployment Script
+[Godoc](https://godoc.org/github.com/kscout/serverless-registry-api/handlers#AppsDeployHandler)  
+
 `GET /apps/id/<app_id>/deploy.sh`
 
 Get deployment script for version of app.  
@@ -205,6 +225,8 @@ Request:
 Response: Bash script text
 
 ### Get Deployment Instructions
+[Godoc](https://godoc.org/github.com/kscout/serverless-registry-api/handlers#DeployInstructionsHandler)  
+
 `GET /apps/id/<app_id>/deployment-instructions`
 
 Get instructions for how user should deploy application.
@@ -220,6 +242,8 @@ Response:
 
 ## Resource Endpoints
 ### Search Resources
+**Not implemented*  
+
 `GET /resources?query=<query>&categories=<categories>`
 
 Search for learning resources.
@@ -237,6 +261,8 @@ Response:
 
 ## Meta Endpoints
 ### Health Check
+[Godoc](https://godoc.org/github.com/kscout/serverless-registry-api/handlers#HealthHandler)  
+
 `GET /health`
 
 Used to determine if server is operating fully.
