@@ -1,5 +1,5 @@
 /*
-Most endpoints to not require authentication.  
+Most endpoints do not require authentication.  
 
 Those which do will be marked. Provide authentication as a bearer token in the
 `Authorization` header.  
