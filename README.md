@@ -138,10 +138,11 @@ HMAC of the request body. The `APP_GITHUB_WEBHOOK_SECRET` key will be used
 to sign this HMAC.
 
 # Deployment
-The [`deploy/template.yaml`](deploy/template.yaml) file defines a
-`Template` resource.
+To deploy:
 
-The `Template` can be processed to obtain an environment's resource definitions.
+1. [Ensure a GitHub App exists](#github-app)
+2. [Configure](#deploy-configuration)
+3. [Deploy](#deploy)
 
 ## GitHub App
 ### Create
