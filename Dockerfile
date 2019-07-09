@@ -1,12 +1,13 @@
 FROM golang:1.12-alpine
 
 RUN apk add git
+RUN adduser -D app
 
-RUN mkdir -p /app
-WORKDIR /app
+USER app
+WORKDIR /home/app
 
 COPY . .
 
 RUN go build -o serverless-registry-api .
 
-CMD /app/serverless-registry-api
+CMD /home/app/serverless-registry-api
