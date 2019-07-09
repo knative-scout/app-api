@@ -18,6 +18,7 @@ import (
 	"github.com/kscout/serverless-registry-api/models"
 	"github.com/kscout/serverless-registry-api/jobs"
 	"github.com/kscout/serverless-registry-api/validation"
+	"github.com/kscout/serverless-registry-api/req"
 
 	"github.com/Noah-Huppert/golog"
 	"github.com/google/go-github/v26/github"
@@ -27,18 +28,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"github.com/bradleyfalzon/ghinstallation"
 )
-
-// bytesReaderCloser implements the Close method ontop of a bytes.Reader.
-// Used by the -mock-webhook and -mock-webhook-event flags to pass a file's
-// contents to net/http.Request.Body.
-type bytesReadCloser struct {
-	*bytes.Reader
-}
-
-// Close implements a meaningless close method for bytesReadCloser
-func (b bytesReadCloser) Close() error {
-	return nil
-}
 
 func main() {
 	// {{{1 Context
@@ -328,7 +317,7 @@ func main() {
 
 		bodyReader := bytes.NewReader(bodyBytes)
 
-		bodyReadCloser := bytesReadCloser{
+		bodyReadCloser := req.ReaderDummyCloser{
 			bodyReader,
 		}
 
