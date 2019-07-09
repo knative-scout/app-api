@@ -15,8 +15,6 @@ API design.
 	- [Get Deployment File](#get-deployment-file)
 	- [Get Deployment Script](#get-deployment-script)
 	- [Get Deployment Instructions](#get-deployment-instructions)
-  - [Resource Endpoints](#resource-endpoints)
-	- [Get All Resources](#get-all-resources)
   - [Meta Endpoints](#meta-endpoints)
 	- [Health Check](#health-check)
 - [Deployment Script](#deployment-script)
@@ -66,18 +64,6 @@ Schema:
   - `name` (String)
   - `email` (String)
 - `site_url` (String)
-
-## Resource Model
-**Not implemented**  
-
-Stored in the `resources` collection.
-
-Schema:
-
-- `resource_id` (String)
-- `name` (String)
-- `description` (String)
-- `author` (String)
 
 # Endpoints
 [Godoc](https://godoc.org/github.com/kscout/serverless-registry-api/handlers)  
@@ -237,20 +223,6 @@ Response:
 
 - `instructions` (String): Deploy instructions, contains newlines,
   markdown formatted
-
-## Resource Endpoints
-### Get All Resources
-**Not implemented**  
-
-`GET /resources`
-
-Get learning resources.
-
-Request: None
-
-Response:
-
-- `resources` (List[[Resource Model](#resource-model)])
 
 ## Meta Endpoints
 ### Health Check
