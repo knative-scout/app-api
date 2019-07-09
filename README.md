@@ -222,5 +222,5 @@ make rollout-staging
 Build local code and deploy to environment:
 
 ```
-make docker
+make push
 ```
