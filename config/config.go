@@ -17,6 +17,12 @@ type Config struct {
 
 	// SiteURL is the URL at which the website can be accessed
 	SiteURL url.URL `default:"https://kscout.io" split_words:"true" required:"true"`
+
+	// BotAPISecret is a secret value used to authenticate with the bot API
+	BotAPISecret string `split_words:"true" required:"true"`
+
+	// BotAPIURL is the URL of the bot API
+	BotAPIURL url.URL `default:"https://bot.kscout.io" split_words:"true" required:"true"`
 	
 	// HTTPAddr is the HTTP server's bind address
 	HTTPAddr string `default:":5000" split_words:"true" required:"true"`
