@@ -240,7 +240,7 @@ Response:
 
 ## Resource Endpoints
 ### Search Resources
-**Not implemented*  
+**Not implemented**  
 
 `GET /resources?query=<query>&categories=<categories>`
 
