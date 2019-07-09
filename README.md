@@ -96,6 +96,13 @@ Force the server to rebuild its database state by passing the
 go run . -update-apps
 ```
 
+To have the server make a request to the bot API's new apps endpoint after it is
+done updating apps pass the `-notify-bot-api` flag as well:
+
+```
+go run . -update-apps -notify-bot-api
+```
+
 This makes the server import data from the serverless registry repository.
 
 ### Seed Data
