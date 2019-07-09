@@ -1,3 +1,5 @@
+[![GoDoc](https://godoc.org/github.com/kscout/serverless-registry-api?status.svg)](https://godoc.org/github.com/kscout/serverless-registry-api)  
+
 # Serverless Registry API
 API which curates serverless applications.
 

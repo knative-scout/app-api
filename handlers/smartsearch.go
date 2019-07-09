@@ -9,9 +9,8 @@ import (
 	"net/http"
 )
 
-// AppSearchHandler is used search apps and return result
+// SmartSearchHandler is used search apps and return result
 // in case of an empty query, it returns all the apps in the database
-
 type SmartSearchHandler struct {
 	BaseHandler
 }
