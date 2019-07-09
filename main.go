@@ -171,6 +171,10 @@ func main() {
 	// doUpdateJob indicates if the server should submit an update job and then exit
 	var doUpdateJob bool
 
+	// updateJobNotifyBotAPI indicates if the server should send a new apps request to
+	// the bot API after the update apps job is complete
+	var updateJobNotifyBotAPI bool
+
 	// doSeed indicates that the server should import seed data into the datbase and exit
 	var doSeed bool
 
@@ -187,19 +191,24 @@ func main() {
 	var mockWebhookEvent string
 
 	flag.BoolVar(&doUpdateJob, "update-apps", false,
-		"If provided server will run one update job and exit. Must be only "+
-			"flag provided.")
+		"If provided server will run one update job and exit. -notify-bot-api "+
+			"must be the only other option provided.")
+	flag.BoolVar(&updateJobNotifyBotAPI, "notify-bot-api", false,
+		"Specifies if the server should make a new aps request to the bot "+
+			"API after it is finished running the update apps job. Can "+
+			"only be specified with the -update-apps option")
 	flag.BoolVar(&doSeed, "seed", false,
 		"If provided server will import seed data from the ./seed-data folder. This "+
 			"folder should hold JSON files which contain 1 app each. Must be "+
-			"the only flag provided")
+			"the only option provided")
 	flag.StringVar(&doValidatePRNum, "validate-pr", "",
 		"If provided will run a validate job for the GitHub pull request with the "+
-			"provided number. Must be the only flag provided")
+			"provided number. Must be the only option provided")
 	flag.StringVar(&doMockWebhook, "mock-webhook", "",
-		"If provided will make a request to the server's webhook endpoint. The body"+
+		"If provided will make a request to the server's webhook endpoint. The body "+
 			"of this request will be the contents of the file specified by "+
-			"this option. The -mock-webhook-event option must be the only other option")
+			"this option. If specified the -mock-webhook-event option is the "+
+			"only other option allowed.")
 	flag.StringVar(&mockWebhookEvent, "mock-webhook-event", "",
 		"X-Github-Event header value for mock webhook request, -mock-webhook must be only "+
 			"other option provided.")
@@ -208,8 +217,25 @@ func main() {
 	// {{{2 Do actions
 	if doUpdateJob {
 		logger.Info("running UpdateApps job and then exiting")
-		req := jobRunner.Submit(jobs.JobTypeUpdateApps, nil)
+
+		if updateJobNotifyBotAPI {
+			logger.Info("will notify the bot API of new apps after the UpdateApps job runs")
+		}
+
+		jobDef := jobs.UpdateAppsJobDefinition{
+			NoBotAPINotify: !updateJobNotifyBotAPI,
+		}
+			
+		jobDefBytes, err := json.Marshal(jobDef)
+		if err != nil {
+			logger.Fatalf("failed to marshal UpdateAppsJobDefinition to JSON: %s",
+				err.Error())
+		}
+			
+		req := jobRunner.Submit(jobs.JobTypeUpdateApps, jobDefBytes)
+		
 		<-req.CompleteChan
+		
 		os.Exit(0)
 	} else if doSeed {
 		logger.Info("seeding database then exiting")
