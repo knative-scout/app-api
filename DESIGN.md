@@ -16,7 +16,7 @@ API design.
 	- [Get Deployment Script](#get-deployment-script)
 	- [Get Deployment Instructions](#get-deployment-instructions)
   - [Resource Endpoints](#resource-endpoints)
-	- [Search Resources](#search-resources)
+	- [Get All Resources](#get-all-resources)
   - [Meta Endpoints](#meta-endpoints)
 	- [Health Check](#health-check)
 - [Deployment Script](#deployment-script)
@@ -239,23 +239,18 @@ Response:
   markdown formatted
 
 ## Resource Endpoints
-### Search Resources
+### Get All Resources
 **Not implemented**  
 
-`GET /resources?query=<query>&categories=<categories>`
+`GET /resources`
 
-Search for learning resources.
+Get learning resources.
 
-If no search parameters are provided all resources will be returned.
-
-Request:
-
-- `query` (Optional, String): Natural language query
-- `categories` (Optional, List[String]): Categories of learning resources
+Request: None
 
 Response:
 
-- `resource` (List[[Resource Model](#resource-model)])
+- `resources` (List[[Resource Model](#resource-model)])
 
 ## Meta Endpoints
 ### Health Check
