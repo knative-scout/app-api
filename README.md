@@ -40,6 +40,8 @@ Configuration is passed via environment variables.
 Most configuration fields have default values which will work for local 
 development. However a few fields must be set:
 
+- `APP_BOT_API_SECRET` (String): Secret value used to authenticate with the 
+  [bot API](https://github.com/kscout/bot-api)
 - `APP_GH_INTEGRATION_ID` (Integer): ID of GitHub App
   - Find by going to: 
 	[KScout Org. GitHub Apps](https://github.com/organizations/kscout/settings/apps) >
@@ -62,8 +64,9 @@ for these fields follows:
 - `APP_EXTERNAL_URL` (String): External URL from which HTTP server can
   be accessed. Should include any URL schemes, ports, paths, subdomains, ect.
   Should not include a trailing slash. Defaults to `http://localhost:5000`.
-- `APP_SITE_URL` (String): URL at which the site can be accessed, defaults
-  to `https://kscout.io`
+- `APP_SITE_URL` (String): URL of site, defaults to `https://kscout.io`
+- `APP_BOT_API_URL` (String): URL of the bot API, defaults 
+  to `https://bot.kscout.io`
 - `APP_HTTP_ADDR` (String): Address to bind server, defaults to `:5000`
 - `APP_DB_HOST` (String): MongoDB host, defaults to `localhost`
 - `APP_DB_PORT` (Integer): MongoDB port, defaults to `27017`
@@ -91,6 +94,13 @@ Force the server to rebuild its database state by passing the
 
 ```
 go run . -update-apps
+```
+
+To have the server make a request to the bot API's new apps endpoint after it is
+done updating apps pass the `-notify-bot-api` flag as well:
+
+```
+go run . -update-apps -notify-bot-api
 ```
 
 This makes the server import data from the serverless registry repository.
