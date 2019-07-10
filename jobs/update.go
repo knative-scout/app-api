@@ -150,7 +150,7 @@ func (j UpdateAppsJob) Do(data []byte) error {
 		URL: &reqURL,
 		Header: map[string][]string{
 			"Content-Type": {"application/json"},
-			"Authorization": {j.Cfg.BotAPISecret},
+			"X-Bot-API-Secret": {j.Cfg.BotAPISecret},
 		},
 		Body: reqReadCloser,
 	}
