@@ -6,23 +6,25 @@ import (
 	"net/url"
 	
 	"github.com/kelseyhightower/envconfig"
+	"gopkg.in/go-playground/validator.v9"
 )
 
 // Config holds application configuration
 type Config struct {
 	// ExternalURL is the host the HTTP server can be accessed by from external users.
-	// This should include any URL scheme, ports, paths, subdomains, ect. Should not
-	// include a trailing slash.
-	ExternalURL url.URL `default:"http://localhost:5000" split_words:"true" required:"true"`
+	// This should include any URL scheme, ports, paths, subdomains, ect.
+	ExternalURL url.URL `default:"http://localhost:5000" split_words:"true" required:"true" validate:"scheme-required"`
 
-	// SiteURL is the URL at which the website can be accessed
-	SiteURL url.URL `default:"https://kscout.io" split_words:"true" required:"true"`
+	// SiteURL is the URL at which the website can be accessed.
+	// Must include a schema.
+	SiteURL url.URL `default:"https://kscout.io" split_words:"true" required:"true" validate:"scheme-required"`
 
 	// BotAPISecret is a secret value used to authenticate with the bot API
 	BotAPISecret string `split_words:"true" required:"true"`
 
-	// BotAPIURL is the URL of the bot API
-	BotAPIURL url.URL `default:"https://bot.kscout.io" split_words:"true" required:"true"`
+	// BotAPIURL is the URL of the bot API.
+	// Must include a schema.
+	BotAPIURL url.URL `default:"https://bot.kscout.io" split_words:"true" required:"true" validate:"scheme-required"`
 	
 	// HTTPAddr is the HTTP server's bind address
 	HTTPAddr string `default:":5000" split_words:"true" required:"true"`
@@ -68,6 +70,17 @@ type Config struct {
 	GhDevTeamName string `default:"@kscout/developers" split_words:"true" required:"true"`
 }
 
+// validateScheme ensures that net/url.URL.Scheme fields are not empty
+func validateScheme(fl validator.FieldLevel) bool {
+	iface := fl.Field().Interface()
+	u, ok := iface.(url.URL)
+	if !ok {
+		return false
+	}
+
+	return len(u.Scheme) > 0
+}
+
 // NewConfig loads configuration values from environment variables
 func NewConfig() (*Config, error) {
 	// Get
@@ -76,6 +89,14 @@ func NewConfig() (*Config, error) {
 	if err := envconfig.Process("app", &config); err != nil {
 		return nil, fmt.Errorf("error loading values from environment variables: %s",
 			err.Error())
+	}
+
+	// Validate
+	validate := validator.New()
+	validate.RegisterValidation("scheme-required", validateScheme)
+
+	if err := validate.Struct(config); err != nil {
+		return nil, fmt.Errorf("failed to validate configuration: %s", err.Error())
 	}
 
 	return &config, nil
