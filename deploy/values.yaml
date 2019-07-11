@@ -17,7 +17,7 @@ http:
   # Configuration
   configMap:
     - key: externalURL
-      value: "{{ .Values.defaultHost }}"
+      value: "https://{{ .Values.defaultHost }}"
       envKey: APP_EXTERNAL_URL
     - key: httpAddr
       value: ":{{ .Values.port }}"
