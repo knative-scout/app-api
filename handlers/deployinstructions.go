@@ -41,14 +41,14 @@ func (h DeployInstructionsHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	h.RespondJSON(w, http.StatusOK, map[string]string{
 		"instructions": fmt.Sprintf("To deploy the %s application run the following command **in bash**:  \n"+
 			"```\n"+
-			". <(curl -L %s/apps/id/%s/deploy.sh)\n"+
+			". <(curl -L https://%s/apps/id/%s/deploy.sh)\n"+
 			"```\n"+
 			"  \n"+
 			"This command will complete the following actions:\n"+
 			"- Present values for any `ConfigMap` and / or `Secret` resources and give you a chance to customize them\n"+
 			"- Deploy app's resource manifests, with any custom values, to your cluster using `kubectl`\n"+
 			"  \n"+
-			"You can see the [raw resource manifests for the %s app here](%s/apps/id/%s/deployment.json)",
+			"You can see the [raw resource manifests for the %s app here](https://%s/apps/id/%s/deployment.json)",
 			app.Name,
 			h.Cfg.ExternalURL.String(), app.AppID, app.Name, h.Cfg.ExternalURL.String(), app.AppID),
 	})
