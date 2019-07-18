@@ -17,6 +17,7 @@ import (
 	"github.com/kscout/serverless-registry-api/config"
 	"github.com/kscout/serverless-registry-api/handlers"
 	"github.com/kscout/serverless-registry-api/jobs"
+	"github.com/kscout/serverless-registry-api/metrics"
 	"github.com/kscout/serverless-registry-api/models"
 	"github.com/kscout/serverless-registry-api/req"
 	"github.com/kscout/serverless-registry-api/validation"
@@ -130,6 +131,9 @@ func main() {
 
 	logger.Debug("authenticated with GitHub API")
 
+	// {{{1 Setup Prometheus metrics
+	metricsInstance := metrics.NewMetrics()
+
 	// {{{1 Setup shutdown wait group
 	// shutdownWaitGroup is used to ensure that all components have gracefuly shut down before the process exists
 	var shutdownWaitGroup sync.WaitGroup
@@ -139,6 +143,7 @@ func main() {
 		Ctx:     ctx,
 		Logger:  logger.GetChild("job-runner"),
 		Cfg:     cfg,
+		Metrics: metricsInstance,
 		GH:      gh,
 		MDbApps: mDbApps,
 	}
@@ -396,7 +401,7 @@ func main() {
 		jobRunner.Submit(jobs.JobTypeUpdateApps, nil)
 	}()
 
-	// {{{1 Setup Prometheus metrics server
+	// {{{1 Prometheus metrics server
 	metricsRouter := mux.NewRouter()
 	metricsRouter.Handle("/metrics", promhttp.Handler())
 
@@ -437,6 +442,7 @@ func main() {
 		Ctx:     ctx,
 		Logger:  logger.GetChild("handlers"),
 		Cfg:     cfg,
+		Metrics: metricsInstance,
 		MDb:     mDb,
 		MDbApps: mDbApps,
 		Gh:      gh,
