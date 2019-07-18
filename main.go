@@ -1,32 +1,34 @@
 package main
 
 import (
-	"strconv"
+	"bytes"
 	"context"
+	"encoding/json"
+	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
-	"flag"
 	"path/filepath"
-	"encoding/json"
-	"io/ioutil"
-	"bytes"
+	"strconv"
+	"sync"
 
 	"github.com/kscout/serverless-registry-api/config"
 	"github.com/kscout/serverless-registry-api/handlers"
-	"github.com/kscout/serverless-registry-api/models"
 	"github.com/kscout/serverless-registry-api/jobs"
-	"github.com/kscout/serverless-registry-api/validation"
+	"github.com/kscout/serverless-registry-api/models"
 	"github.com/kscout/serverless-registry-api/req"
+	"github.com/kscout/serverless-registry-api/validation"
 
 	"github.com/Noah-Huppert/golog"
+	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/google/go-github/v26/github"
 	"github.com/gorilla/mux"
+	//"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"github.com/bradleyfalzon/ghinstallation"
 )
 
 func main() {
@@ -96,7 +98,7 @@ func main() {
 
 	// {{{2 Ensure database indexes exist
 	mDbAppsIndexes := mDbApps.Indexes()
-	
+
 	_, err = mDbAppsIndexes.CreateOne(ctx, mongo.IndexModel{
 		Keys: bson.D{{"$**", "text"}},
 	})
@@ -128,39 +130,24 @@ func main() {
 
 	logger.Debug("authenticated with GitHub API")
 
-	// {{{1 Setup component shutdown bus
-	// targetShutdownBusCount is the number of messages which must be received on
-	// shutdownBus before the process will exit gracefully
-	targetShutdownBusCount := 2
-	
-	// shutdownBus receives a message with a component's name when a component shuts down.
-	// This lets the process wait until all of its components have been shut down gracefully
-	// before exiting.
-	//
-	// Currently the process has the following components:
-	//
-	//    - (job-runner): Job runner
-	//    - (http-api) HTTP API server
-	// 
-	// The end of the program will wait for targetShutdownBusCount number of messages to
-	// be sent over this bus before exiting. Each of the components above should send a
-	// message on the bus when they are done.
-	shutdownBus := make(chan string, targetShutdownBusCount)
+	// {{{1 Setup shutdown wait group
+	// shutdownWaitGroup is used to ensure that all components have gracefuly shut down before the process exists
+	var shutdownWaitGroup sync.WaitGroup
 
 	// {{{1 Job runner
 	jobRunner := &jobs.JobRunner{
-		Ctx: ctx,
-		Logger: logger.GetChild("job-runner"),
-		Cfg: cfg,
-		GH: gh,
+		Ctx:     ctx,
+		Logger:  logger.GetChild("job-runner"),
+		Cfg:     cfg,
+		GH:      gh,
 		MDbApps: mDbApps,
 	}
 	jobRunner.Init()
 
+	shutdownWaitGroup.Add(1)
 	go func() {
+		defer shutdownWaitGroup.Done()
 		jobRunner.Run()
-
-		shutdownBus <- "job-runner"
 	}()
 
 	// {{{1 Run quick script actions
@@ -182,7 +169,7 @@ func main() {
 	// specified num
 	var doValidatePRNum string
 
-	// doMockWebhook indicates that the server should make a request to webhook endpoint 
+	// doMockWebhook indicates that the server should make a request to webhook endpoint
 	// located at host config.Config.ExternalURL. The value should be the name of a file
 	// which contains the request body
 	var doMockWebhook string
@@ -225,17 +212,17 @@ func main() {
 		jobDef := jobs.UpdateAppsJobDefinition{
 			NoBotAPINotify: !updateJobNotifyBotAPI,
 		}
-			
+
 		jobDefBytes, err := json.Marshal(jobDef)
 		if err != nil {
 			logger.Fatalf("failed to marshal UpdateAppsJobDefinition to JSON: %s",
 				err.Error())
 		}
-			
+
 		req := jobRunner.Submit(jobs.JobTypeUpdateApps, jobDefBytes)
-		
+
 		<-req.CompleteChan
-		
+
 		os.Exit(0)
 	} else if doSeed {
 		logger.Info("seeding database then exiting")
@@ -246,11 +233,11 @@ func main() {
 				if err != nil {
 					return err
 				}
-				
+
 				if info.IsDir() {
 					return nil
 				}
-				
+
 				// Open file
 				f, err := os.Open(p)
 				if err != nil {
@@ -274,7 +261,7 @@ func main() {
 
 				// Save into database
 				logger.Debugf("seeding %#v into db", app)
-				
+
 				upsertTrue := true
 				_, err = mDbApps.UpdateOne(ctx,
 					bson.D{{"app_id", app.AppID}},
@@ -325,7 +312,7 @@ func main() {
 		if len(mockWebhookEvent) == 0 {
 			logger.Fatalf("-mock-webhook requires -mock-webhook-event be specified")
 		}
-		
+
 		logger.Info("making mock request to webhook endpoint then exiting")
 
 		// Read body file
@@ -356,15 +343,15 @@ func main() {
 
 		req := http.Request{
 			Method: "POST",
-			URL: &webhookURL,
+			URL:    &webhookURL,
 			Header: map[string][]string{
 				"X-Hub-Signature": {sig},
-				"X-Github-Event": {mockWebhookEvent},
-				"Conent-Type": {"application/json"},
+				"X-Github-Event":  {mockWebhookEvent},
+				"Conent-Type":     {"application/json"},
 			},
 			Body: bodyReadCloser,
 		}
-		
+
 		resp, err := http.DefaultClient.Do(&req)
 		if err != nil {
 			logger.Fatalf("failed to make mock webhook request: %s", err.Error())
@@ -400,18 +387,18 @@ func main() {
 
 		// {{{1 Load all apps if empty
 		loadLogger.Debugf("no apps found, will load apps into database")
-		
+
 		jobRunner.Submit(jobs.JobTypeUpdateApps, nil)
 	}()
 
 	// {{{1 Router
 	baseHandler := handlers.BaseHandler{
-		Ctx:            ctx,
-		Logger:         logger.GetChild("handlers"),
-		Cfg:            cfg,
-		MDb:            mDb,
-		MDbApps:        mDbApps,
-		Gh:             gh,
+		Ctx:     ctx,
+		Logger:  logger.GetChild("handlers"),
+		Cfg:     cfg,
+		MDb:     mDb,
+		MDbApps: mDbApps,
+		Gh:      gh,
 	}
 
 	router := mux.NewRouter()
@@ -438,7 +425,7 @@ func main() {
 
 	router.Handle("/apps/webhook", handlers.WebhookHandler{
 		BaseHandler: baseHandler.GetChild("webhook"),
-		JobRunner: jobRunner,
+		JobRunner:   jobRunner,
 	}).Methods("POST")
 
 	router.Handle("/apps/id/{id}/deployment-instructions", handlers.DeployInstructionsHandler{
@@ -456,7 +443,6 @@ func main() {
 	router.Handle("/apps/id/{appID}/deployment.json", handlers.AppsDeployResourcesHandler{
 		baseHandler.GetChild("appsDeployResources"),
 	}).Methods("GET")
-
 
 	// !!! Must always be last !!!
 	router.Handle("/", handlers.PreFlightOptionsHandler{
@@ -480,12 +466,13 @@ func main() {
 		},
 	}
 
+	shutdownWaitGroup.Add(1)
 	go func() {
+		defer shutdownWaitGroup.Done()
+
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Fatalf("failed to serve: %s", err.Error())
 		}
-
-		shutdownBus <- "http-api"
 	}()
 
 	logger.Infof("started server on %s", cfg.HTTPAddr)
@@ -493,22 +480,14 @@ func main() {
 	// {{{1 Wait for all components to shut down
 	<-ctx.Done()
 
-	logger.Infof("shutting down %d components", targetShutdownBusCount)
-
 	go func() {
 		if err := server.Shutdown(context.Background()); err != nil {
 			logger.Fatalf("failed to shutdown server: %s",
 				err.Error())
 		}
 	}()
-	
-	shutdownBusRecvCount := 0
 
-	for shutdownBusRecvCount < targetShutdownBusCount {
-		name := <-shutdownBus
-		shutdownBusRecvCount++
-		logger.Infof("%s component shut down (%d/%d)", name, shutdownBusRecvCount, targetShutdownBusCount)
-	}
+	shutdownWaitGroup.Wait()
 
 	logger.Info("done")
 }
