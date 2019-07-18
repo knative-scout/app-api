@@ -1,25 +1,25 @@
 package parsing
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"strings"
-	"fmt"
-	"context"
-	"encoding/json"
-	"crypto/sha256"
-	"net/url"
 
 	"github.com/kscout/serverless-registry-api/models"
 	"github.com/kscout/serverless-registry-api/validation"
-	
-	"github.com/google/go-github/v26/github"
+
 	"github.com/ghodss/yaml"
+	"github.com/google/go-github/v26/github"
 	"github.com/google/uuid"
 	"gopkg.in/go-playground/validator.v9"
-	v1Meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1Core "k8s.io/api/core/v1"
+	v1Meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // RepoParser reads GitHub repositories for serverless application information
@@ -58,7 +58,7 @@ func (p RepoParser) GetAppIDs() ([]string, error) {
 	}
 
 	ids := []string{}
-	
+
 	for _, content := range contents {
 		if *content.Type == "file" {
 			continue
@@ -84,7 +84,7 @@ func (p RepoParser) GetDownloadURLs(path string) ([]string, error) {
 
 	// {{{1 Accumulate list of files
 	urls := []string{}
-	
+
 	for _, content := range contents {
 		if *content.Type == "dir" {
 			continue
@@ -123,16 +123,16 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 		})
 	if err != nil {
 		return nil, []ParseError{ParseError{
-			What: "all files in the app directory",
-			Why: "the GitHub API returned an error response",
+			What:          "all files in the app directory",
+			Why:           "the GitHub API returned an error response",
 			InternalError: err,
 		}}
 	}
 
 	if len(dirContents) == 0 {
 		return nil, []ParseError{ParseError{
-			What: "all files in the app directory",
-			Why: "no files were found",
+			What:            "all files in the app directory",
+			Why:             "no files were found",
 			FixInstructions: "add required files",
 		}}
 	}
@@ -158,12 +158,12 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 	// allowedContent is a map set of the allowed names of content in an app directory
 	allowedContent := map[string]bool{
 		"manifest.yaml": true,
-		"README.md": true,
-		"logo.png": true,
-		"deployment": true,
-		"screenshots": true,
+		"README.md":     true,
+		"logo.png":      true,
+		"deployment":    true,
+		"screenshots":   true,
 	}
-	
+
 	for _, content := range dirContents {
 		// fullType is the content.Type field but gaurenteed to be a full english word
 		// Needed because when content is a directory content.Type = "dir" which is not
@@ -172,15 +172,24 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 		if *content.Type == "dir" {
 			fullType = "directory"
 		}
-		
+
+		// Ignore some directories
+		if *content.Type == "dir" {
+			switch *content.Name {
+			case "contribute":
+				continue
+				break
+			}
+		}
+
 		// what will be used as the ParseError.What field value if necessary
 		what := fmt.Sprintf("`%s` %s", *content.Name, fullType)
-		
+
 		// {{{2 Check if file / directory is supposed to be there
 		if _, ok := allowedContent[*content.Name]; !ok {
 			errs = append(errs, ParseError{
-				What: what,
-				Why: fmt.Sprintf("not allowed in an app directory"),
+				What:            what,
+				Why:             fmt.Sprintf("not allowed in an app directory"),
 				FixInstructions: fmt.Sprintf("delete this %s", fullType),
 			})
 			continue
@@ -196,13 +205,13 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					*content.Name))
 				if err != nil {
 					errs = append(errs, ParseError{
-						What: what,
-						Why: "failed to get contents from the GitHub API",
+						What:          what,
+						Why:           "failed to get contents from the GitHub API",
 						InternalError: err,
 					})
 					continue
 				}
-				
+
 				// {{{2 Parse as YAML
 				var manifest models.AppManifestFile
 				err = yaml.Unmarshal([]byte(txt), &manifest)
@@ -224,12 +233,12 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				for _, category := range manifest.Categories {
 					app.Categories = append(app.Categories, strings.ToLower(category))
 				}
-				
+
 				// {{{3 Set App fields from manifest values
 				app.Name = manifest.Name
 				app.Tagline = manifest.Tagline
 				app.Author = manifest.Author
-				
+
 			case "README.md":
 				// {{{2 Get content
 				txt, err := p.GetFileContent(fmt.Sprintf("%s/%s", id,
@@ -237,7 +246,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				if err != nil {
 					errs = append(errs, ParseError{
 						What: what,
-						Why: "failed to get file content, the GitHub "+
+						Why: "failed to get file content, the GitHub " +
 							"API returned any error response",
 						InternalError: err,
 					})
@@ -256,16 +265,16 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				if err != nil {
 					errs = append(errs, ParseError{
 						What: what,
-						Why: "failed to list files in the directory "+
-							"using the GitHub API, an error "+
+						Why: "failed to list files in the directory " +
+							"using the GitHub API, an error " +
 							"response was returned",
 						InternalError: err,
 					})
 					continue
 				}
-				
+
 				app.ScreenshotURLs = urls
-				
+
 			case "deployment":
 				// {{{2 Get YAML for each resource
 				// {{{3 Get files in directory
@@ -277,8 +286,8 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				if err != nil {
 					errs = append(errs, ParseError{
 						What: what,
-						Why: "failed to list files in the directory "+
-							"using the GitHub API, an error "+
+						Why: "failed to list files in the directory " +
+							"using the GitHub API, an error " +
 							"response was returned",
 						InternalError: err,
 					})
@@ -299,14 +308,14 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						errs = append(errs, ParseError{
 							What: fmt.Sprintf("`%s/deployment/%s`"+
 								"file", id, *deployContent.Name),
-							Why: "failed to get content of file "+
-								"using the GitHub API, an error "+
+							Why: "failed to get content of file " +
+								"using the GitHub API, an error " +
 								"response was returned",
 							InternalError: err,
 						})
 						continue
 					}
-					
+
 					filesTxt = append(filesTxt, txt)
 				}
 
@@ -326,7 +335,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 							lines = append(lines, line)
 						}
 					}
-					
+
 					if len(lines) > 0 {
 						resourcesYAML = append(resourcesYAML,
 							[]byte(strings.Join(lines, "\n")))
@@ -336,7 +345,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				// {{{2 Parse resources
 				resourcesJSON := [][]byte{}
 
-				params := []models.AppDeployParameter{}				
+				params := []models.AppDeployParameter{}
 				paramdResourcesJSON := [][]byte{}
 
 				for _, resourceYAML := range resourcesYAML {
@@ -344,8 +353,8 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					resourceJSON, err := yaml.YAMLToJSON(resourceYAML)
 					if err != nil {
 						errs = append(errs, ParseError{
-							What: what,
-							Why: "failed to convert YAML to JSON",
+							What:          what,
+							Why:           "failed to convert YAML to JSON",
 							InternalError: err,
 						})
 						continue
@@ -353,12 +362,12 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 
 					// {{{3 Parse type data
 					var resourceType v1Meta.TypeMeta
-					
+
 					err = json.Unmarshal(resourceJSON, &resourceType)
 					if err != nil {
 						errs = append(errs, ParseError{
-							What: what,
-							Why: "failed to parse resource type information",
+							What:          what,
+							Why:           "failed to parse resource type information",
 							InternalError: err,
 						})
 						continue
@@ -367,8 +376,8 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					// {{{3 Do not allow namespace resources in the deployment
 					if resourceType.Kind == "Namespace" {
 						errs = append(errs, ParseError{
-							What: what,
-							Why: "resources of type Namespace are not allowed",
+							What:            what,
+							Why:             "resources of type Namespace are not allowed",
 							FixInstructions: "remove all Namespace resources",
 						})
 						continue
@@ -380,8 +389,8 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					err = json.Unmarshal(resourceJSON, &resourceMeta)
 					if err != nil {
 						errs = append(errs, ParseError{
-							What: what,
-							Why: "failed to parse resource metadata information",
+							What:          what,
+							Why:           "failed to parse resource metadata information",
 							InternalError: err,
 						})
 						continue
@@ -390,8 +399,8 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					// {{{3 Do not allow resources with a namespace field
 					if len(resourceMeta.Namespace) > 0 {
 						errs = append(errs, ParseError{
-							What: what,
-							Why: "resources may not have a metadata.namespace field",
+							What:            what,
+							Why:             "resources may not have a metadata.namespace field",
 							FixInstructions: "ensure resources do not have a metadata.namespace field",
 						})
 						continue
@@ -406,36 +415,36 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						paramdResourcesJSON = append(paramdResourcesJSON, resourceJSON)
 						continue
 					}
-					
+
 					switch resourceType.Kind {
 					case "Namespace":
 						// Do not include Namespaces in deployment resources
 						continue
 					case "Secret":
 						var secret v1Core.Secret
-						
+
 						err := json.Unmarshal(resourceJSON, &secret)
 						if err != nil {
 							errs = append(errs, ParseError{
-								What: what,
-								Why: "failed to parse resource as v1.Secret",
+								What:          what,
+								Why:           "failed to parse resource as v1.Secret",
 								InternalError: err,
 							})
 							continue
 						}
 
 						newData := map[string][]byte{}
-						
+
 						for key, data := range secret.Data {
 							param := models.AppDeployParameter{
 								Substitution: uuid.New().String(),
 								DisplayName: fmt.Sprintf("\"%s\" key in \"%s\" Secret",
 									key, secret.Name),
-								DefaultValue: string(data),
+								DefaultValue:   string(data),
 								RequiresBase64: true,
 							}
 							params = append(params, param)
-							
+
 							newData[key] = []byte(fmt.Sprintf("%s", param.Substitution))
 						}
 
@@ -444,8 +453,8 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						resourceJSON, err = json.Marshal(secret)
 						if err != nil {
 							errs = append(errs, ParseError{
-								What: what,
-								Why: "failed to save resource as JSON",
+								What:          what,
+								Why:           "failed to save resource as JSON",
 								InternalError: err,
 							})
 							continue
@@ -454,29 +463,29 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						paramdResourcesJSON = append(paramdResourcesJSON, resourceJSON)
 					case "ConfigMap":
 						var configMap v1Core.ConfigMap
-						
+
 						err := json.Unmarshal(resourceJSON, &configMap)
 						if err != nil {
 							errs = append(errs, ParseError{
-								What: what,
-								Why: "failed to parse resource as v1.ConfigMap",
+								What:          what,
+								Why:           "failed to parse resource as v1.ConfigMap",
 								InternalError: err,
 							})
 							continue
 						}
 
 						newData := map[string]string{}
-						
+
 						for key, data := range configMap.Data {
 							param := models.AppDeployParameter{
 								Substitution: uuid.New().String(),
 								DisplayName: fmt.Sprintf("\"%s\" key in \"%s\" ConfigMap",
 									key, configMap.Name),
-								DefaultValue: data,
+								DefaultValue:   data,
 								RequiresBase64: false,
 							}
 							params = append(params, param)
-							
+
 							newData[key] = fmt.Sprintf("%s", param.Substitution)
 						}
 
@@ -485,8 +494,8 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 						resourceJSON, err = json.Marshal(configMap)
 						if err != nil {
 							errs = append(errs, ParseError{
-								What: what,
-								Why: "failed to save resource as JSON",
+								What:          what,
+								Why:           "failed to save resource as JSON",
 								InternalError: err,
 							})
 							continue
@@ -509,10 +518,10 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 				deploymentScript := CreateDeploymentScript(id, params, strings.Join(paramdResourcesStr, "\n"))
 
 				app.Deployment = models.AppDeployment{
-					Resources: resourcesStr,
+					Resources:              resourcesStr,
 					ParameterizedResources: paramdResourcesStr,
-					Parameters: params,
-					DeployScript: deploymentScript,
+					Parameters:             params,
+					DeployScript:           deploymentScript,
 				}
 			}
 		}
@@ -522,8 +531,8 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 	asJSON, err := json.Marshal(app)
 	if err != nil {
 		errs = append(errs, ParseError{
-			What: "the process which computes the app's `version` field",
-			Why: "interal server error",
+			What:          "the process which computes the app's `version` field",
+			Why:           "interal server error",
 			InternalError: err,
 		})
 		return nil, errs
@@ -549,16 +558,16 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 			// If a field is not in this map it means the field is a value computed
 			// by this RepoParser.GetApp method, not provided by the user.
 			whatMap := map[string]string{
-				"Name": "`name` field in the `manifest.yaml` file",
-				"Tagline": "`tagline` field in the `manifest.yaml` file",
-				"Tags": "`tags` array in the `manifest.yaml` file",
-				"Categories": "`categories` array in the `manifest.yaml` file",
-				"Author": "`author` field in the `manifest.yaml` file",
-				"Maintainer": "`maintainer` field in the `manifest.yaml` file",
-				"Description": "`README.md` file",
+				"Name":           "`name` field in the `manifest.yaml` file",
+				"Tagline":        "`tagline` field in the `manifest.yaml` file",
+				"Tags":           "`tags` array in the `manifest.yaml` file",
+				"Categories":     "`categories` array in the `manifest.yaml` file",
+				"Author":         "`author` field in the `manifest.yaml` file",
+				"Maintainer":     "`maintainer` field in the `manifest.yaml` file",
+				"Description":    "`README.md` file",
 				"ScreenshotURLs": "`screenshots` directory",
-				"LogoURL": "`logo.png` file",
-				"Deployment": "`deployment` directory",
+				"LogoURL":        "`logo.png` file",
+				"Deployment":     "`deployment` directory",
 			}
 
 			// whyMap maps validation tags to user readable reasons for the validation
@@ -578,21 +587,21 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 					"see [contributing documentation](https://github.com/kscout/serverless-apps#contributing) for a list of allowed category values",
 				},
 			}
-			
+
 			for _, fieldErr := range fieldErrs {
 				// If a field the user provides a value for
 				if what, ok := whatMap[fieldErr.Field()]; ok {
 					// If validation error is caused by user's input
 					if why, ok := whyMap[fieldErr.Tag()]; ok {
 						errs = append(errs, ParseError{
-							What: what,
-							Why: why[0],
+							What:            what,
+							Why:             why[0],
 							FixInstructions: why[1],
 						})
 					} else { // error caused by this method, not user input
 						errs = append(errs, ParseError{
 							What: what,
-							Why: "internal server error occurred",
+							Why:  "internal server error occurred",
 							InternalError: fmt.Errorf("the \"%s\" "+
 								"validation tag failed",
 								fieldErr.Tag()),
@@ -611,8 +620,8 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 			}
 		} else { // Rarely, an internal error will occur when validating
 			errs = append(errs, ParseError{
-				What: "the app validation process failed",
-				Why: "internal server error occurred",
+				What:          "the app validation process failed",
+				Why:           "internal server error occurred",
 				InternalError: err,
 			})
 		}
@@ -625,7 +634,6 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 	return &app, nil
 }
 
-
 func CreateDeploymentScript(id string, params []models.AppDeployParameter, ymlfile string) string {
 
 	//opening deploy.sh file
@@ -636,57 +644,55 @@ func CreateDeploymentScript(id string, params []models.AppDeployParameter, ymlfi
 	defer func() {
 		err := file.Close()
 		if err != nil {
-			panic(fmt.Errorf("unable to close file : %s",err))
+			panic(fmt.Errorf("unable to close file : %s", err))
 		}
 	}()
 
 	script, err := ioutil.ReadAll(file)
 	bashrc := string(script)
 
-	secrets := "\n"+
-	"ID=\"{{param.id}}\"\n"+
-	"KEY=\"{{param.key}}\"\n"+
-	"DFLT=\"{{param.dflt}}\"\n"+
-	"BASE64=\"{{param.base64}}\"\n"+
+	secrets := "\n" +
+		"ID=\"{{param.id}}\"\n" +
+		"KEY=\"{{param.key}}\"\n" +
+		"DFLT=\"{{param.dflt}}\"\n" +
+		"BASE64=\"{{param.base64}}\"\n" +
 
-	"echo  #new line\n"+
-	"echo \"Default Value for $KEY is '$DFLT'\"\n"+
-	"read -p \"Do you want to change it ? (y/n): \" choice\n"+
+		"echo  #new line\n" +
+		"echo \"Default Value for $KEY is '$DFLT'\"\n" +
+		"read -p \"Do you want to change it ? (y/n): \" choice\n" +
 
-	"case \"$choice\" in\n"+
-	"y|Y|yes|YES|Yes )\n"+
-	"read -p \"Enter new value for $KEY : \" value\n"+
-	"if [[ \"$BASE64\" == \"Y\" ]]\n"+
-	"then\n"+
-	"value=$(echo \"${value}\" | base64)\n"+
-	"else\n"+
-	"value=\"${value}\"\n"+
-	"fi\n"+
-	"SED_DATA=\"$SED_DATA ; s/$ID/$value/\" ;;\n"+
-	"n|N|no|NO|No )\n"+
-	"if [[ \"$BASE64\" == \"Y\" ]]\n"+
-	"then\n"+
-	"DFLT=\"${value}\"\n"+
-	"else\n"+
-	"DFLT=$(echo \"${DFLT}\" | base64 -d)\n"+
-	"fi\n"+
-	"SED_DATA=\"$SED_DATA ; s/$ID/$DFLT/\";;\n"+
-	"* ) echo \"invalid input, Please run the script again\";;\n"+
-	"esac\n"+
-	"\n"
+		"case \"$choice\" in\n" +
+		"y|Y|yes|YES|Yes )\n" +
+		"read -p \"Enter new value for $KEY : \" value\n" +
+		"if [[ \"$BASE64\" == \"Y\" ]]\n" +
+		"then\n" +
+		"value=$(echo \"${value}\" | base64)\n" +
+		"else\n" +
+		"value=\"${value}\"\n" +
+		"fi\n" +
+		"SED_DATA=\"$SED_DATA ; s/$ID/$value/\" ;;\n" +
+		"n|N|no|NO|No )\n" +
+		"if [[ \"$BASE64\" == \"Y\" ]]\n" +
+		"then\n" +
+		"DFLT=\"${value}\"\n" +
+		"else\n" +
+		"DFLT=$(echo \"${DFLT}\" | base64 -d)\n" +
+		"fi\n" +
+		"SED_DATA=\"$SED_DATA ; s/$ID/$DFLT/\";;\n" +
+		"* ) echo \"invalid input, Please run the script again\";;\n" +
+		"esac\n" +
+		"\n"
 
-	secretsRes:= ""
+	secretsRes := ""
 
-	for _,parameter := range params{
+	for _, parameter := range params {
 		ID := parameter.Substitution
 		KEY := parameter.DisplayName
 		DFLT := parameter.DefaultValue
 		BASE64 := "N"
-		if parameter.RequiresBase64{
+		if parameter.RequiresBase64 {
 			BASE64 = "Y"
 		}
-
-
 
 		tempSec := secrets
 		tempSec = strings.ReplaceAll(tempSec, "{{param.id}}", ID)
@@ -700,7 +706,6 @@ func CreateDeploymentScript(id string, params []models.AppDeployParameter, ymlfi
 
 	bashrc = strings.ReplaceAll(bashrc, "{{{replacement.script}}}", secretsRes)
 	bashrc = strings.ReplaceAll(bashrc, "{{{yaml.file}}}", ymlfile)
-
 
 	return bashrc
 }
