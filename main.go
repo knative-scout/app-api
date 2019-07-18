@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"bytes"
+	"sync"
 
 	"github.com/kscout/serverless-registry-api/config"
 	"github.com/kscout/serverless-registry-api/handlers"
@@ -128,39 +129,24 @@ func main() {
 
 	logger.Debug("authenticated with GitHub API")
 
-	// {{{1 Setup component shutdown bus
-	// targetShutdownBusCount is the number of messages which must be received on
-	// shutdownBus before the process will exit gracefully
-	targetShutdownBusCount := 2
-	
-	// shutdownBus receives a message with a component's name when a component shuts down.
-	// This lets the process wait until all of its components have been shut down gracefully
-	// before exiting.
-	//
-	// Currently the process has the following components:
-	//
-	//    - (job-runner): Job runner
-	//    - (http-api) HTTP API server
-	// 
-	// The end of the program will wait for targetShutdownBusCount number of messages to
-	// be sent over this bus before exiting. Each of the components above should send a
-	// message on the bus when they are done.
-	shutdownBus := make(chan string, targetShutdownBusCount)
+	// {{{1 Setup shutdown wait group
+	// shutdownWaitGroup is used to ensure that all components have gracefuly shut down before the process exists
+	var shutdownWaitGroup sync.WaitGroup
 
 	// {{{1 Job runner
 	jobRunner := &jobs.JobRunner{
-		Ctx: ctx,
-		Logger: logger.GetChild("job-runner"),
-		Cfg: cfg,
-		GH: gh,
+		Ctx:     ctx,
+		Logger:  logger.GetChild("job-runner"),
+		Cfg:     cfg,
+		GH:      gh,
 		MDbApps: mDbApps,
 	}
 	jobRunner.Init()
 
+	shutdownWaitGroup.Add(1)
 	go func() {
+		defer shutdownWaitGroup.Done()
 		jobRunner.Run()
-
-		shutdownBus <- "job-runner"
 	}()
 
 	// {{{1 Run quick script actions
@@ -480,12 +466,13 @@ func main() {
 		},
 	}
 
+	shutdownWaitGroup.Add(1)
 	go func() {
+		defer shutdownWaitGroup.Done()
+
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Fatalf("failed to serve: %s", err.Error())
 		}
-
-		shutdownBus <- "http-api"
 	}()
 
 	logger.Infof("started server on %s", cfg.HTTPAddr)
@@ -493,22 +480,14 @@ func main() {
 	// {{{1 Wait for all components to shut down
 	<-ctx.Done()
 
-	logger.Infof("shutting down %d components", targetShutdownBusCount)
-
 	go func() {
 		if err := server.Shutdown(context.Background()); err != nil {
 			logger.Fatalf("failed to shutdown server: %s",
 				err.Error())
 		}
 	}()
-	
-	shutdownBusRecvCount := 0
 
-	for shutdownBusRecvCount < targetShutdownBusCount {
-		name := <-shutdownBus
-		shutdownBusRecvCount++
-		logger.Infof("%s component shut down (%d/%d)", name, shutdownBusRecvCount, targetShutdownBusCount)
-	}
+	shutdownWaitGroup.Wait()
 
 	logger.Info("done")
 }
