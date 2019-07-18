@@ -75,9 +75,11 @@ func validateScheme(fl validator.FieldLevel) bool {
 	iface := fl.Field().Interface()
 	u, ok := iface.(url.URL)
 	if !ok {
+		fmt.Printf("not a url")
 		return false
 	}
 
+	fmt.Printf("scheme=%s\n", u.Scheme)
 	return len(u.Scheme) > 0
 }
 
