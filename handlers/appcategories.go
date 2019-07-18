@@ -63,7 +63,7 @@ func getCategoriesFromDB(query string, h AppCategoriesHandler) []string {
 
 	result, err := h.MDbApps.Find(h.Ctx, categoriesBson, options.Find().SetProjection(projection) )
 	if err != nil {
-		panic(fmt.Errorf("unable to query database", err.Error()))
+		panic(fmt.Errorf("unable to query database: %s", err.Error()))
 	}
 
 	// declaring return string
