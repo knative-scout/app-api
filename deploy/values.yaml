@@ -14,14 +14,21 @@ http:
   # Internal app container port
   port: 5000
 
+  # Enable metrics
+  metricsEnabled: true
+  metricsPort: 9090
+
   # Configuration
   configMap:
     - key: externalURL
       value: "https://{{ .Values.defaultHost }}"
       envKey: APP_EXTERNAL_URL
-    - key: httpAddr
+    - key: apiAddr
       value: ":{{ .Values.port }}"
-      envKey: APP_HTTP_ADDR
+      envKey: APP_API_ADDR
+    - key: metricsAddr
+      value: ":{{ .Values.metricsPort }}"
+      envKey: APP_METRICS_ADDR
     - key: ghPrivateKeyPath
       value: /mnt/secret/ghPrivateKey
       envKey: APP_GH_PRIVATE_KEY_PATH
@@ -31,6 +38,3 @@ http:
 
   # Pass Mongo credentials to app container
   mongoEnabled: true
-
-  # Disable metrics
-  metricsEnabled: false

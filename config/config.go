@@ -25,8 +25,11 @@ type Config struct {
 	// Must include a schema.
 	BotAPIURL url.URL `default:"https://bot.kscout.io" split_words:"true" required:"true"`
 
-	// HTTPAddr is the HTTP server's bind address
-	HTTPAddr string `default:":5000" split_words:"true" required:"true"`
+	// APIAddr is the API server's bind address
+	APIAddr string `default:":5000" split_words:"true" required:"true"`
+
+	// MetricsAddr is the metrics server's bind address
+	MetricsAddr string `default:":9090" split_words:"true" required:"true"`
 
 	// DbHost is the MongoDB server host
 	DbHost string `default:"localhost" split_words:"true" required:"true"`

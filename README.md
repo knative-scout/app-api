@@ -69,7 +69,9 @@ for these fields follows:
 - `APP_SITE_URL` (String): URL of site, defaults to `https://kscout.io`
 - `APP_BOT_API_URL` (String): URL of the bot API, defaults 
   to `https://bot.kscout.io`
-- `APP_HTTP_ADDR` (String): Address to bind server, defaults to `:5000`
+- `APP_API_ADDR` (String): Address to bind API server, defaults to `:5000`
+- `APP_METRICS_ADDR` (String): Address to bind metrics server, defaults 
+  to `:9090`
 - `APP_DB_HOST` (String): MongoDB host, defaults to `localhost`
 - `APP_DB_PORT` (Integer): MongoDB port, defaults to `27017`
 - `APP_DB_USER` (String): MongoDB user, defaults to `kscout-dev`
