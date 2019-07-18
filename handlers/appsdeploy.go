@@ -32,7 +32,7 @@ func (h AppsDeployHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	result := h.MDbApps.FindOne(h.Ctx, bson.D{{"app_id", appID}})
 	if result.Err() != nil {
-		panic(fmt.Errorf("unable to query database", result.Err().Error()))
+		panic(fmt.Errorf("unable to query database: %s", result.Err().Error()))
 	}
 
 
