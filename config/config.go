@@ -1,29 +1,30 @@
 package config
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"net/url"
-	
+
 	"github.com/kelseyhightower/envconfig"
 )
 
 // Config holds application configuration
 type Config struct {
 	// ExternalURL is the host the HTTP server can be accessed by from external users.
-	// This should include any URL scheme, ports, paths, subdomains, ect. Should not
-	// include a trailing slash.
+	// This should include any URL scheme, ports, paths, subdomains, ect.
 	ExternalURL url.URL `default:"http://localhost:5000" split_words:"true" required:"true"`
 
-	// SiteURL is the URL at which the website can be accessed
+	// SiteURL is the URL at which the website can be accessed.
+	// Must include a schema.
 	SiteURL url.URL `default:"https://kscout.io" split_words:"true" required:"true"`
 
 	// BotAPISecret is a secret value used to authenticate with the bot API
 	BotAPISecret string `split_words:"true" required:"true"`
 
-	// BotAPIURL is the URL of the bot API
+	// BotAPIURL is the URL of the bot API.
+	// Must include a schema.
 	BotAPIURL url.URL `default:"https://bot.kscout.io" split_words:"true" required:"true"`
-	
+
 	// HTTPAddr is the HTTP server's bind address
 	HTTPAddr string `default:":5000" split_words:"true" required:"true"`
 
@@ -76,6 +77,19 @@ func NewConfig() (*Config, error) {
 	if err := envconfig.Process("app", &config); err != nil {
 		return nil, fmt.Errorf("error loading values from environment variables: %s",
 			err.Error())
+	}
+
+	// Validate
+	if len(config.ExternalURL.Scheme) == 0 {
+		return nil, fmt.Errorf("ExternalURL field must have scheme")
+	}
+
+	if len(config.SiteURL.Scheme) == 0 {
+		return nil, fmt.Errorf("SiteURL field must have scheme")
+	}
+
+	if len(config.BotAPIURL.Scheme) == 0 {
+		return nil, fmt.Errorf("BotAPIURL field must have scheme")
 	}
 
 	return &config, nil
