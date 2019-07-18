@@ -29,6 +29,8 @@ type Metrics struct {
 	APIHandlersPanicsTotal *prometheus.CounterVec
 
 	// APIErrorResponsesTotal is the number of HTTP responses which do not have a 2xx status code
+	//
+	// Has the additional label: status_code. This label records the status code of error responses.
 	APIErrorResponsesTotal *prometheus.CounterVec
 
 	// JobsSubmittedTotal is the number of jobs which are submitted
@@ -73,7 +75,7 @@ func NewMetrics() Metrics {
 			Subsystem: "api",
 			Name:      "error_responses_total",
 			Help:      "Total number of HTTP responses with a non 2xx status code",
-		}, []string{"path", "method"}),
+		}, []string{"path", "method", "status_code"}),
 		JobsSubmittedTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "serverless_registry_api",
 			Subsystem: "jobs",
