@@ -173,15 +173,6 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 			fullType = "directory"
 		}
 
-		// Ignore some directories
-		if *content.Type == "dir" {
-			switch *content.Name {
-			case "contribute":
-				continue
-				break
-			}
-		}
-
 		// what will be used as the ParseError.What field value if necessary
 		what := fmt.Sprintf("`%s` %s", *content.Name, fullType)
 
