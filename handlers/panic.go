@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"runtime/debug"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // PanicHandler runs another http.Handler and recovers from any panics which occur
@@ -20,9 +22,13 @@ type PanicHandler struct {
 // ServeHTTP implements http.Handler
 func (h PanicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
-		if r := recover(); r != nil {
+		if recovery := recover(); recovery != nil {
+			// Metrics
+			h.Metrics.APIHandlersPanicsTotal.With(prometheus.Labels{"path": r.URL.Path, "method": r.Method}).Inc()
+
+			// Handle panic
 			h.Logger.Error(string(debug.Stack()))
-			h.Logger.Errorf("panicked while handling request: %#v", r)
+			h.Logger.Errorf("panicked while handling request: %#v", recovery)
 
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
@@ -35,4 +41,3 @@ func (h PanicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	h.Handler.ServeHTTP(w, r)
 }
-	

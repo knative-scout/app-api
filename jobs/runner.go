@@ -8,6 +8,7 @@ import (
 
 	"github.com/Noah-Huppert/golog"
 	"github.com/google/go-github/v26/github"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -104,15 +105,30 @@ func (r JobRunner) Run() {
 			return
 
 		case req := <-r.queue:
+			// Pre-metrics
+			promLabels := prometheus.Labels{"job_type": string(req.Type)}
+			r.Metrics.JobsSubmittedTotal.With(promLabels).Inc()
+			durationTimer := r.Metrics.StartTimer(r.Metrics.JobsRunDurationMilliseconds.With(promLabels))
+
+			// Run job
 			job, ok := r.jobInstances[req.Type]
 			if !ok {
+				promLabels["failure_type"] = "invalid_type"
+				r.Metrics.JobsFailuresTotal.With(promLabels).Inc()
+
 				r.Logger.Fatalf("cannot handle job type: %s", req.Type)
 			}
 
 			if err := job.Do(req.Data); err != nil {
+				promLabels["failure_type"] = "internal"
+				r.Metrics.JobsFailuresTotal.With(promLabels).Inc()
+
 				r.Logger.Errorf("failed to run %s job: %s",
 					req.Type, err.Error())
 			}
+
+			// Post-metrics
+			durationTimer.Finish()
 
 			close(req.CompleteChan)
 			r.Logger.Debugf("ran %s job", req.Type)
