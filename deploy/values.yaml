@@ -31,3 +31,6 @@ http:
 
   # Pass Mongo credentials to app container
   mongoEnabled: true
+
+  # Disable metrics
+  metricsEnabled: false
