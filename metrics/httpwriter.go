@@ -26,7 +26,7 @@ func (r MetricsResponseWriter) Write(b []byte) (int, error) {
 	return r.ResponseWriter.Write(b)
 }
 
-// WriteHeader increments WriteHeaderCounterVec if present and calls ResponseWriter.WriteHeader
+// WriteHeader calls ResponseWriter.WriteHeader and OnWriteHeader
 func (r MetricsResponseWriter) WriteHeader(code int) {
 	defer func() {
 		r.OnWriteHeader(code)
