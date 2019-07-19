@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-// ReqLoggerHandler logs every request. Additionally it records certain metrics about each request.
+// ReqLoggerHandler logs every request
 type ReqLoggerHandler struct {
 	BaseHandler
 
