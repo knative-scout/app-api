@@ -20,11 +20,6 @@ type Metrics struct {
 	// Labels: path(request path), method( request HTTP method)
 	APIHandlerPanicsTotal *prometheus.CounterVec
 
-	// JobsSubmittedTotal is the number of jobs which are submitted.
-	//
-	// Labels: job_type (jobs.JobStartRequest.Type field)
-	JobsSubmittedTotal *prometheus.CounterVec
-
 	// JobsRunDurationsMilliseconds is the number of milliseconds jobs run for.
 	//
 	// Labels: job_type (jobs.JobStartRequest.Type field), successful (0 = fail, 1 = success)
@@ -46,12 +41,6 @@ func NewMetrics() Metrics {
 			Name:      "handler_panics_total",
 			Help:      "Total number of HTTP handlers which have panicked while processing a request",
 		}, []string{"path", "method"}),
-		JobsSubmittedTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "serverless_registry_api",
-			Subsystem: "jobs",
-			Name:      "submitted_total",
-			Help:      "Total number of jobs submitted",
-		}, []string{"job_type"}),
 		JobsRunDurationsMilliseconds: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: "serverless_registry_api",
 			Subsystem: "jobs",
@@ -62,7 +51,6 @@ func NewMetrics() Metrics {
 
 	prometheus.MustRegister(metrics.APIResponseDurationsMilliseconds)
 	prometheus.MustRegister(metrics.APIHandlerPanicsTotal)
-	prometheus.MustRegister(metrics.JobsSubmittedTotal)
 	prometheus.MustRegister(metrics.JobsRunDurationsMilliseconds)
 
 	return metrics

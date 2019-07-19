@@ -107,10 +107,6 @@ func (r JobRunner) Run() {
 
 		case req := <-r.queue:
 			// Pre-metrics
-			r.Metrics.JobsSubmittedTotal.With(prometheus.Labels{
-				"job_type": string(req.Type),
-			}).Inc()
-
 			durationTimer := r.Metrics.StartTimer()
 
 			// Run job

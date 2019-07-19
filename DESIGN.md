@@ -276,8 +276,6 @@ Metrics spec:
         - `path`
         - `method`
   - Subsystem: `jobs`
-    - `submitted_total`
-        - `job_type`
     - `run_durations_milliseconds`
         - `job_type`
         - `successful` 
