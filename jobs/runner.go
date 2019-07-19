@@ -2,11 +2,14 @@ package jobs
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/kscout/serverless-registry-api/config"
+	"github.com/kscout/serverless-registry-api/metrics"
 
 	"github.com/Noah-Huppert/golog"
 	"github.com/google/go-github/v26/github"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -16,7 +19,7 @@ type JobTypeT string
 // Job types identify different jobs which can be run
 const (
 	JobTypeUpdateApps JobTypeT = "update_apps"
-	JobTypeValidate  = "validate"
+	JobTypeValidate            = "validate"
 )
 
 // JobStartRequest provides informtion required to start a job
@@ -49,6 +52,9 @@ type JobRunner struct {
 	// Cfg is the server configuration
 	Cfg *config.Config
 
+	// Metrics holds internal Prometheus metrics recorders
+	Metrics metrics.Metrics
+
 	// GH is a GitHub API client
 	GH *github.Client
 
@@ -63,27 +69,27 @@ func (r *JobRunner) Init() {
 
 	r.jobInstances = map[JobTypeT]Job{}
 	r.jobInstances[JobTypeUpdateApps] = UpdateAppsJob{
-		Ctx: r.Ctx,
-		Cfg: r.Cfg,
-		GH: r.GH,
+		Ctx:     r.Ctx,
+		Cfg:     r.Cfg,
+		GH:      r.GH,
 		MDbApps: r.MDbApps,
 	}
 	r.jobInstances[JobTypeValidate] = ValidateJob{
-		Ctx: r.Ctx,
+		Ctx:    r.Ctx,
 		Logger: r.Logger.GetChild("job.validate"),
-		Cfg: r.Cfg,
-		GH: r.GH,
+		Cfg:    r.Cfg,
+		GH:     r.GH,
 	}
 }
 
 // Submit new job
 func (r JobRunner) Submit(t JobTypeT, data []byte) *JobStartRequest {
 	req := JobStartRequest{
-		Type: t,
-		Data: data,
+		Type:         t,
+		Data:         data,
 		CompleteChan: make(chan interface{}),
 	}
-	
+
 	r.queue <- &req
 
 	return &req
@@ -100,18 +106,37 @@ func (r JobRunner) Run() {
 			return
 
 		case req := <-r.queue:
+			// Pre-metrics
+			r.Metrics.JobsSubmittedTotal.With(prometheus.Labels{
+				"job_type": string(req.Type),
+			}).Inc()
+
+			durationTimer := r.Metrics.StartTimer()
+
+			// Run job
 			job, ok := r.jobInstances[req.Type]
 			if !ok {
 				r.Logger.Fatalf("cannot handle job type: %s", req.Type)
 			}
-			
+
+			jobSuccessful := "1"
+
 			if err := job.Do(req.Data); err != nil {
 				r.Logger.Errorf("failed to run %s job: %s",
 					req.Type, err.Error())
+
+				jobSuccessful = "0"
 			}
 
 			close(req.CompleteChan)
 			r.Logger.Debugf("ran %s job", req.Type)
+
+			// Post-metrics
+			durationTimer.Finish(r.Metrics.JobsRunDurationsMilliseconds.
+				With(prometheus.Labels{
+					"job_type":   fmt.Sprintf("%s", req.Type),
+					"successful": jobSuccessful,
+				}))
 		}
 	}
 }

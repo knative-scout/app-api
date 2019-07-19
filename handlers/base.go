@@ -1,16 +1,17 @@
 package handlers
 
 import (
-	"fmt"
 	"context"
-	"net/http"
 	"encoding/json"
+	"fmt"
+	"net/http"
 
 	"github.com/kscout/serverless-registry-api/config"
+	"github.com/kscout/serverless-registry-api/metrics"
 
 	"github.com/Noah-Huppert/golog"
-	"go.mongodb.org/mongo-driver/mongo"
 	"github.com/google/go-github/v26/github"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // BaseHandler provides helper methods and commonly used variables for API endpoints to base
@@ -25,6 +26,9 @@ type BaseHandler struct {
 
 	// Cfg is the application configuration
 	Cfg *config.Config
+
+	// Metrics holds Prometheus internal metrics recorders
+	Metrics metrics.Metrics
 
 	// MDb is a MongoDB database instance
 	MDb *mongo.Database
@@ -67,7 +71,7 @@ func (h BaseHandler) RespondTEXT(w http.ResponseWriter, status int, resp string)
 	w.Header().Set("Content-Type", "plain/text")
 	w.WriteHeader(status)
 
-	if _, err:= fmt.Fprintf(w, resp); err != nil{
+	if _, err := fmt.Fprintf(w, resp); err != nil {
 		panic(fmt.Errorf("failed to write bash to body: %s", err.Error()))
 	}
 

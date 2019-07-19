@@ -17,6 +17,7 @@ import (
 	"github.com/kscout/serverless-registry-api/config"
 	"github.com/kscout/serverless-registry-api/handlers"
 	"github.com/kscout/serverless-registry-api/jobs"
+	"github.com/kscout/serverless-registry-api/metrics"
 	"github.com/kscout/serverless-registry-api/models"
 	"github.com/kscout/serverless-registry-api/req"
 	"github.com/kscout/serverless-registry-api/validation"
@@ -25,7 +26,7 @@ import (
 	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/google/go-github/v26/github"
 	"github.com/gorilla/mux"
-	//"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -130,6 +131,9 @@ func main() {
 
 	logger.Debug("authenticated with GitHub API")
 
+	// {{{1 Setup Prometheus metrics
+	metricsInstance := metrics.NewMetrics()
+
 	// {{{1 Setup shutdown wait group
 	// shutdownWaitGroup is used to ensure that all components have gracefuly shut down before the process exists
 	var shutdownWaitGroup sync.WaitGroup
@@ -139,6 +143,7 @@ func main() {
 		Ctx:     ctx,
 		Logger:  logger.GetChild("job-runner"),
 		Cfg:     cfg,
+		Metrics: metricsInstance,
 		GH:      gh,
 		MDbApps: mDbApps,
 	}
@@ -147,7 +152,12 @@ func main() {
 	shutdownWaitGroup.Add(1)
 	go func() {
 		defer shutdownWaitGroup.Done()
+
+		logger.Debug("started job runner")
+
 		jobRunner.Run()
+
+		logger.Debug("stopped job runner")
 	}()
 
 	// {{{1 Run quick script actions
@@ -391,76 +401,116 @@ func main() {
 		jobRunner.Submit(jobs.JobTypeUpdateApps, nil)
 	}()
 
-	// {{{1 Router
+	// {{{1 Prometheus metrics server
+	metricsRouter := mux.NewRouter()
+	metricsRouter.Handle("/metrics", promhttp.Handler())
+
+	metricsServer := http.Server{
+		Addr:    cfg.MetricsAddr,
+		Handler: metricsRouter,
+	}
+
+	logger.Debug("starting metrics server")
+
+	shutdownWaitGroup.Add(1)
+	go func() {
+		defer shutdownWaitGroup.Done()
+
+		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatalf("failed to serve metrics: %s", err.Error())
+		}
+
+		logger.Debug("stopped metrics server")
+	}()
+
+	shutdownWaitGroup.Add(1)
+	go func() {
+		defer shutdownWaitGroup.Done()
+
+		<-ctx.Done()
+
+		if err := metricsServer.Shutdown(context.Background()); err != nil {
+			logger.Fatalf("failed to shutdown metrics server: %s",
+				err.Error())
+		}
+	}()
+
+	logger.Infof("started metrics server on %s", cfg.MetricsAddr)
+
+	// {{{1 API Router
 	baseHandler := handlers.BaseHandler{
 		Ctx:     ctx,
 		Logger:  logger.GetChild("handlers"),
 		Cfg:     cfg,
+		Metrics: metricsInstance,
 		MDb:     mDb,
 		MDbApps: mDbApps,
 		Gh:      gh,
 	}
 
-	router := mux.NewRouter()
+	apiRouter := mux.NewRouter()
 
-	router.Handle("/health", handlers.HealthHandler{
+	apiRouter.Handle("/health", handlers.HealthHandler{
 		baseHandler.GetChild("health"),
 	}).Methods("GET")
 
-	router.Handle("/apps/id/{id}", handlers.AppByIDHandler{
+	apiRouter.Handle("/apps/id/{id}", handlers.AppByIDHandler{
 		baseHandler.GetChild("get-app-by-id"),
 	}).Methods("GET")
 
-	router.Handle("/apps", handlers.AppSearchHandler{
+	apiRouter.Handle("/apps", handlers.AppSearchHandler{
 		baseHandler.GetChild("app-search"),
 	}).Methods("GET")
 
-	router.Handle("/apps/tags", handlers.AppTagsHandler{
+	apiRouter.Handle("/apps/tags", handlers.AppTagsHandler{
 		baseHandler.GetChild("get-apps-tags"),
 	}).Methods("GET")
 
-	router.Handle("/apps/categories", handlers.AppCategoriesHandler{
+	apiRouter.Handle("/apps/categories", handlers.AppCategoriesHandler{
 		baseHandler.GetChild("get-apps-categories"),
 	}).Methods("GET")
 
-	router.Handle("/apps/webhook", handlers.WebhookHandler{
+	apiRouter.Handle("/apps/webhook", handlers.WebhookHandler{
 		BaseHandler: baseHandler.GetChild("webhook"),
 		JobRunner:   jobRunner,
 	}).Methods("POST")
 
-	router.Handle("/apps/id/{id}/deployment-instructions", handlers.DeployInstructionsHandler{
+	apiRouter.Handle("/apps/id/{id}/deployment-instructions", handlers.DeployInstructionsHandler{
 		baseHandler.GetChild("deploy-instructions"),
 	}).Methods("GET")
 
-	router.Handle("/nsearch", handlers.SmartSearchHandler{
+	apiRouter.Handle("/nsearch", handlers.SmartSearchHandler{
 		baseHandler.GetChild("nsearch"),
 	}).Methods("GET")
 
-	router.Handle("/apps/id/{appID}/deploy.sh", handlers.AppsDeployHandler{
+	apiRouter.Handle("/apps/id/{appID}/deploy.sh", handlers.AppsDeployHandler{
 		baseHandler.GetChild("appsDeploy"),
 	}).Methods("GET")
 
-	router.Handle("/apps/id/{appID}/deployment.json", handlers.AppsDeployResourcesHandler{
+	apiRouter.Handle("/apps/id/{appID}/deployment.json", handlers.AppsDeployResourcesHandler{
 		baseHandler.GetChild("appsDeployResources"),
 	}).Methods("GET")
 
 	// !!! Must always be last !!!
-	router.Handle("/", handlers.PreFlightOptionsHandler{
+	apiRouter.Handle("/", handlers.PreFlightOptionsHandler{
 		baseHandler.GetChild("pre-flight-options"),
 	}).Methods("OPTIONS")
 
-	// {{{1 Start HTTP server
-	logger.Debug("starting HTTP server")
+	// {{{1 Start API server
+	logger.Debug("starting API server")
 
-	server := http.Server{
-		Addr: cfg.HTTPAddr,
+	apiServer := http.Server{
+		Addr: cfg.APIAddr,
 		Handler: handlers.PanicHandler{
 			BaseHandler: baseHandler,
-			Handler: handlers.ReqLoggerHandler{
+			Handler: handlers.MetricsHandler{
 				BaseHandler: baseHandler,
-				Handler: handlers.CORSHandler{
+				Handler: handlers.ReqLoggerHandler{
 					BaseHandler: baseHandler,
-					Handler:     router,
+					Handler: handlers.CORSHandler{
+						BaseHandler: baseHandler,
+						Handler:     apiRouter,
+					},
 				},
 			},
 		},
@@ -470,23 +520,28 @@ func main() {
 	go func() {
 		defer shutdownWaitGroup.Done()
 
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatalf("failed to serve: %s", err.Error())
+		if err := apiServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatalf("failed to serve API: %s", err.Error())
 		}
+
+		logger.Debug("stopped API server")
 	}()
 
-	logger.Infof("started server on %s", cfg.HTTPAddr)
-
-	// {{{1 Wait for all components to shut down
-	<-ctx.Done()
-
+	shutdownWaitGroup.Add(1)
 	go func() {
-		if err := server.Shutdown(context.Background()); err != nil {
-			logger.Fatalf("failed to shutdown server: %s",
+		defer shutdownWaitGroup.Done()
+
+		<-ctx.Done()
+
+		if err := apiServer.Shutdown(context.Background()); err != nil {
+			logger.Fatalf("failed to shutdown API server: %s",
 				err.Error())
 		}
 	}()
 
+	logger.Infof("started API server on %s", cfg.APIAddr)
+
+	// {{{1 Wait for all components to shut down
 	shutdownWaitGroup.Wait()
 
 	logger.Info("done")
