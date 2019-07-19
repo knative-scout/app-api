@@ -261,7 +261,7 @@ Metrics spec:
 > 
 > - Namespace: `<namespace>`
 >    - Subsystem: `<subsystem>`
->        - [ ] `<metric>`
+>        - `<metric>`
 >            - `<label>`
 >
 > ...

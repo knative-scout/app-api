@@ -12,7 +12,7 @@ import (
 // MetricsHandler exports custom API metrics.
 //
 // The PanicHandler is the only other middleware handler that exports metrics.
-// This is neccessary due to the nature of the metrics it collections.
+// This is neccessary due to the nature of the metrics it collects.
 type MetricsHandler struct {
 	BaseHandler
 
