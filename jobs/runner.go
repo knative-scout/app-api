@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/kscout/serverless-registry-api/config"
 	"github.com/kscout/serverless-registry-api/metrics"
@@ -106,32 +107,36 @@ func (r JobRunner) Run() {
 
 		case req := <-r.queue:
 			// Pre-metrics
-			promLabels := prometheus.Labels{"job_type": string(req.Type)}
-			r.Metrics.JobsSubmittedTotal.With(promLabels).Inc()
-			durationTimer := r.Metrics.StartTimer(r.Metrics.JobsRunDurationMilliseconds.With(promLabels))
+			r.Metrics.JobsSubmittedTotal.With(prometheus.Labels{
+				"job_type": string(req.Type),
+			}).Inc()
+
+			durationTimer := r.Metrics.StartTimer()
 
 			// Run job
 			job, ok := r.jobInstances[req.Type]
 			if !ok {
-				promLabels["failure_type"] = "invalid_type"
-				r.Metrics.JobsFailuresTotal.With(promLabels).Inc()
-
 				r.Logger.Fatalf("cannot handle job type: %s", req.Type)
 			}
 
-			if err := job.Do(req.Data); err != nil {
-				promLabels["failure_type"] = "internal"
-				r.Metrics.JobsFailuresTotal.With(promLabels).Inc()
+			jobSuccessful := "1"
 
+			if err := job.Do(req.Data); err != nil {
 				r.Logger.Errorf("failed to run %s job: %s",
 					req.Type, err.Error())
-			}
 
-			// Post-metrics
-			durationTimer.Finish()
+				jobSuccessful = "0"
+			}
 
 			close(req.CompleteChan)
 			r.Logger.Debugf("ran %s job", req.Type)
+
+			// Post-metrics
+			durationTimer.Finish(r.Metrics.JobsRunDurationsMilliseconds.
+				With(prometheus.Labels{
+					"job_type":   fmt.Sprintf("%s", req.Type),
+					"successful": jobSuccessful,
+				}))
 		}
 	}
 }

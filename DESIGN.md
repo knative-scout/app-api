@@ -18,6 +18,7 @@ API design.
   - [Meta Endpoints](#meta-endpoints)
 	- [Health Check](#health-check)
 - [Deployment Script](#deployment-script)
+- [Internal Metrics](#internal-metrics)
 
 # Overview
 HTTP RESTful API.  
@@ -250,3 +251,33 @@ To facilitate this process the script will be automatically generated on the
 server. It will contain a heredoc with the app's deployment JSON. For each of
 the `ConfigMap` or `Secret` keys it will place a variable. It will prompt the
 user for the value of this variable, or use the default value.
+
+# Internal Metrics
+The API server publishes internal Prometheus metrics.
+
+Metrics spec:
+
+> *Format*
+> 
+> - Namespace: `<namespace>`
+>    - Subsystem: `<subsystem>`
+>        - [ ] `<metric>`
+>            - `<label>`
+>
+> ...
+
+- Namespace: `serverless_registry_api`
+  - Subsystem: `api`
+    - `response_durations_milliseconds`
+        - `path`
+        - `method`
+        - `status_code`
+    - `handler_panics_total`
+        - `path`
+        - `method`
+  - Subsystem: `jobs`
+    - `submitted_total`
+        - `job_type`
+    - `run_durations_milliseconds`
+        - `job_type`
+        - `successful` 

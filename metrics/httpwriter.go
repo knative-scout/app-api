@@ -9,12 +9,12 @@ type MetricsResponseWriter struct {
 	// ResponseWriter which will actually perform work
 	ResponseWriter http.ResponseWriter
 
-	// WriteHeaderCallback is a called any time ResponseWriter.WriteHeader is called
-	WriteHeaderCallback WriteHeaderCallback
+	// OnWriteHeader is a called any time ResponseWriter.WriteHeader is called
+	OnWriteHeader OnWriteHeaderFunc
 }
 
-// WriteHeaderCallback is a function which will be called any time ResponseWriter.WriteHeader is called
-type WriteHeaderCallback func(code int)
+// OnWriteHeaderFunc is a function which will be called any time ResponseWriter.WriteHeader is called
+type OnWriteHeaderFunc func(code int)
 
 // Header calls ResponseWriter.Header
 func (r MetricsResponseWriter) Header() http.Header {
@@ -29,7 +29,7 @@ func (r MetricsResponseWriter) Write(b []byte) (int, error) {
 // WriteHeader increments WriteHeaderCounterVec if present and calls ResponseWriter.WriteHeader
 func (r MetricsResponseWriter) WriteHeader(code int) {
 	defer func() {
-		r.WriteHeaderCallback(code)
+		r.OnWriteHeader(code)
 	}()
 
 	r.ResponseWriter.WriteHeader(code)

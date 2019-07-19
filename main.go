@@ -503,11 +503,14 @@ func main() {
 		Addr: cfg.APIAddr,
 		Handler: handlers.PanicHandler{
 			BaseHandler: baseHandler,
-			Handler: handlers.ReqLoggerHandler{
+			Handler: handlers.MetricsHandler{
 				BaseHandler: baseHandler,
-				Handler: handlers.CORSHandler{
+				Handler: handlers.ReqLoggerHandler{
 					BaseHandler: baseHandler,
-					Handler:     apiRouter,
+					Handler: handlers.CORSHandler{
+						BaseHandler: baseHandler,
+						Handler:     apiRouter,
+					},
 				},
 			},
 		},
