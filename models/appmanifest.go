@@ -6,7 +6,10 @@ package models
 type AppManifestFile struct {
 	// Name to display to users
 	Name string `yaml:"name"`
-	
+
+	// SourceURL is a link to the source files for this app.
+	SourceURL string `yaml:"source_url"`
+
 	// Tagline is a short description of the app
 	Tagline string `yaml:"tagline"`
 
