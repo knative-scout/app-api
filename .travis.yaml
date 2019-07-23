@@ -1,0 +1,21 @@
+language: go
+go:
+  - 1.12.5
+  - 1.12.6
+go_import_path: github.com/kscout/serverless-registry-api
+services:
+  - docker
+before_install:
+  - sudo apt-get install -y httpie
+jobs:
+  include:
+    - stage: test
+      script: go test ./...
+    - stage: docker-build
+      script: make docker ENV=prod LOGIN=true &> /dev/null
+  deploy:
+    provider: script
+    script:  make ci-deploy &> /dev/null || ./deploy-gh-deploy-status.sh set-state failure
+      make deloy-prod &> /dev/null
+    on:
+      branch: master

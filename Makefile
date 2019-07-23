@@ -4,7 +4,8 @@
 	deploy deploy-prod deploy-staging \
 	rm-deploy \
 	docker docker-build docker-push \
-	db db-cli
+	db db-cli \
+	ci-deploy
 
 MAKE ?= make
 
@@ -72,7 +73,10 @@ rm-deploy:
 	| oc delete -f -
 
 # build and push docker image
-docker: docker-build docker-push
+docker:
+	@if [ -eq "$LOGIN" "true" ]; then echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin &> /dev/null
+	${MAKE} docker-build
+	${MAKE} docker-push
 
 # build docker image for ENV
 docker-build:
@@ -97,3 +101,12 @@ db:
 # runs mongo on shell
 db-cli:
 	docker run -it --rm --net host mongo:latest mongo -u ${DB_USER} -p ${DB_PASSWORD}
+
+# deploy app via CI, creates GitHub deployment statuses to track progress
+ci-deploy:
+	@if [ -z "${ENV}" ]; then echo "ENV must be set"; exit 1; fi
+	./deploy/gh-deploy-status.sh new
+	./deploy/gh-deploy-status.sh set-state in_progress
+	${MAKE} docker
+	${MAKE} deploy-prod
+	./deploy-gh-deploy-status.sh set-state success
