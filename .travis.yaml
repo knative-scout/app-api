@@ -11,8 +11,11 @@ jobs:
   include:
     - stage: test
       script: go test ./...
-    - stage: docker-build
-      script: make docker ENV=prod LOGIN=true &> /dev/null
+  deploy:
+    provider: script
+    script: make docker ENV=prod LOGIN=true &> /dev/null
+    on:
+      branch: master
   deploy:
     provider: script
     script:  make ci-deploy &> /dev/null || ./deploy-gh-deploy-status.sh set-state failure
