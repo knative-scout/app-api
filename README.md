@@ -15,6 +15,7 @@ API which curates serverless applications.
   - [Configuration](#deploy-configuration)
   - [Deploy](#deploy)
   - [Staging Deployment](#staging-deployment)
+  - [GitHub Deployment Status](#github-deployment-status)
 
 # Overview
 See [DESIGN.md](DESIGN.md)
@@ -238,3 +239,17 @@ Build local code and deploy to environment:
 ```
 make push
 ```
+
+## GitHub Deployment Status
+GitHub has 
+[a page](https://github.com/kscout/serverless-registry-api/deployments) which 
+tracks the commit currently deployed to an environment.
+
+To create a status for a deployment run:
+
+```
+make gh-deploy
+```
+
+You can optionally set the `STATE` and `REF` variable. See the target in the 
+`Makefile` for more details.

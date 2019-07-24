@@ -4,7 +4,8 @@
 	deploy deploy-prod deploy-staging \
 	rm-deploy \
 	docker docker-build docker-push \
-	db db-cli
+	db db-cli \
+	gh-deploy
 
 MAKE ?= make
 
@@ -19,6 +20,8 @@ DB_DATA_DIR ?= container-data/db
 DB_CONTAINER_NAME ?= kscout-serverless-registry-api-db
 DB_USER ?= kscout-dev
 DB_PASSWORD ?= secretpassword
+
+JP ?= jp
 
 # push local code to ENV deploy
 push: docker imagestream-tag
@@ -97,3 +100,17 @@ db:
 # runs mongo on shell
 db-cli:
 	docker run -it --rm --net host mongo:latest mongo -u ${DB_USER} -p ${DB_PASSWORD}
+
+# create deployment status for current commit
+# The jp command is required.
+# STATE is the state of the deployment status, can be error, failure, inactive, queued, or success. Defaults to success.
+# REF is the GitHub reference of the code which is deployed, defaults to local HEAD's sha.
+gh-deploy:
+	if [ -z "${MAKEFILE_GH_API_TOKEN}" ]; then echo "MAKEFILE_GH_API_TOKEN must be set" >&2; exit 1; fi
+	if ! which ${JP} &> /dev/null; then echo "${JP} command must be installed" >&2; exit 1; fi 
+
+	$(eval STATE ?= success)
+	$(eval REF ?= $(shell git rev-parse HEAD))
+
+	$(eval id ?= $(shell curl -X POST -H "Authorization: bearer ${MAKEFILE_GH_API_TOKEN}" -d "{\"ref\": \"${REF}\"}" "https://api.github.com/repos/kscout/${APP}/deployments" | ${JP} id))
+	curl -X POST -H "Authorization: bearer ${MAKEFILE_GH_API_TOKEN}" -d "{\"state\": \"${STATE}\"}" "https://api.github.com/repos/kscout/${APP}/deployments/${id}/statuses"
