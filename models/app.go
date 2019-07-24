@@ -7,7 +7,7 @@ type App struct {
 	Name string `json:"name" bson:"name" validate:"required"`
 
 	// HomepageURL is a link to the website for this app.
-	HomepageURL string `json:"homepage_url" bson:"homepage_url" yaml:"homepage_url"`
+	HomepageURL string `json:"homepage_url" bson:"homepage_url" validate:"required"`
 
 	// Tagline is a short description of the app
 	Tagline string `json:"tagline" bson:"tagline" validate:"required"`
