@@ -34,10 +34,12 @@ rollout:
 # rollout production
 rollout-prod:
 	${MAKE} rollout ENV=prod
+	${MAKE} gh-deploy ENV=production
 
 # rollout staging
 rollout-staging:
 	${MAKE} rollout ENV=staging
+	${MAKE} gh-deploy ENV=staging
 
 # import latest tag for ENV to imagestream
 imagestream-tag:
@@ -105,12 +107,13 @@ db-cli:
 # The jp command is required.
 # STATE is the state of the deployment status, can be error, failure, inactive, queued, or success. Defaults to success.
 # REF is the GitHub reference of the code which is deployed, defaults to local HEAD's sha.
+# ENV is the environment. Defaults to production
 gh-deploy:
 	if [ -z "${MAKEFILE_GH_API_TOKEN}" ]; then echo "MAKEFILE_GH_API_TOKEN must be set" >&2; exit 1; fi
-	if ! which ${JP} &> /dev/null; then echo "${JP} command must be installed" >&2; exit 1; fi 
 
 	$(eval STATE ?= success)
 	$(eval REF ?= $(shell git rev-parse HEAD))
+	$(eval ENV ?= production)
 
-	$(eval id ?= $(shell curl -X POST -H "Authorization: bearer ${MAKEFILE_GH_API_TOKEN}" -d "{\"ref\": \"${REF}\"}" "https://api.github.com/repos/kscout/${APP}/deployments" | ${JP} id))
+	$(eval id ?= $(shell curl -X POST -H "Authorization: bearer ${MAKEFILE_GH_API_TOKEN}" -d "{\"ref\": \"${REF}\", \"environment\": \"${ENV}\"}" "https://api.github.com/repos/kscout/${APP}/deployments" | ${JP} id))
 	curl -X POST -H "Authorization: bearer ${MAKEFILE_GH_API_TOKEN}" -d "{\"state\": \"${STATE}\"}" "https://api.github.com/repos/kscout/${APP}/deployments/${id}/statuses"
