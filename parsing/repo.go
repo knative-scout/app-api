@@ -227,7 +227,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 
 				// {{{3 Set App fields from manifest values
 				app.Name = manifest.Name
-				app.SourceURL = manifest.SourceURL
+				app.HomepageURL = manifest.HomepageURL
 				app.Tagline = manifest.Tagline
 				app.Author = manifest.Author
 

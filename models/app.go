@@ -6,12 +6,8 @@ type App struct {
 	// Name to display to users
 	Name string `json:"name" bson:"name" validate:"required"`
 
-	// SourceURL is a link to the source files for this app.
-	//
-	// This could be a link to the app's source code, a Dockerfile, a tutorial, ect.
-	// Used to provide credit to the original author's code and point people to a place
-	// where they can contribute to this app.
-	SourceURL string `json:"source_url" bson:"source_url" validate:"required,url"`
+	// HomepageURL is a link to the website for this app.
+	HomepageURL string `json:"homepage_url" bson:"homepage_url" yaml:"homepage_url"`
 
 	// Tagline is a short description of the app
 	Tagline string `json:"tagline" bson:"tagline" validate:"required"`
