@@ -109,6 +109,10 @@ func (c Config) String() (string, error) {
 		c.GhWebhookSecret = "REDACTED_NOT_EMPTY"
 	}
 
+	if c.BotAPISecret != "" {
+		c.BotAPISecret = "REDACTED_NOT_EMPTY"
+	}
+
 	// Convert to JSON
 	configBytes, err := json.Marshal(c)
 	if err != nil {
