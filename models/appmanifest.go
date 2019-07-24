@@ -8,7 +8,7 @@ type AppManifestFile struct {
 	Name string `yaml:"name"`
 
 	// HomepageURL is a link to the website for this app.
-	HomepageURL string `yaml:"homepage_url"`
+	HomepageURL string `yaml:"homepageUrl"`
 
 	// Tagline is a short description of the app
 	Tagline string `yaml:"tagline"`
