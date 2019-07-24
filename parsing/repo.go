@@ -551,6 +551,7 @@ func (p RepoParser) GetApp(id string) (*models.App, []ParseError) {
 			// by this RepoParser.GetApp method, not provided by the user.
 			whatMap := map[string]string{
 				"Name":           "`name` field in the `manifest.yaml` file",
+				"HomepageURL":    "`homepage_url` field in the `manifest.yaml` file",
 				"Tagline":        "`tagline` field in the `manifest.yaml` file",
 				"Tags":           "`tags` array in the `manifest.yaml` file",
 				"Categories":     "`categories` array in the `manifest.yaml` file",
