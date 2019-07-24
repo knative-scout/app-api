@@ -5,7 +5,14 @@ package models
 type App struct {
 	// Name to display to users
 	Name string `json:"name" bson:"name" validate:"required"`
-	
+
+	// SourceURL is a link to the source files for this app.
+	//
+	// This could be a link to the app's source code, a Dockerfile, a tutorial, ect.
+	// Used to provide credit to the original author's code and point people to a place
+	// where they can contribute to this app.
+	SourceURL string `json:"source_url" bson:"source_url" validate:"required,url"`
+
 	// Tagline is a short description of the app
 	Tagline string `json:"tagline" bson:"tagline" validate:"required"`
 
@@ -28,14 +35,14 @@ type App struct {
 	ScreenshotURLs []string `json:"screenshot_urls" bson:"screenshot_urls"`
 
 	// LogoURL is a link to the app logo
-	LogoURL string `json:"logo_url" bson:"logo_url" validate:"required"`
+	LogoURL string `json:"logo_url" bson:"logo_url" validate:"required,url"`
 
 	// VerificationStatus indicates the stage of the verification process the app
 	// is currently in. Can be one of: "pending", "verifying", "good", "bad"
 	VerificationStatus string `json:"verification_status" bson:"verification_status" validate:"required"`
 
-	// GitHubURL is a link to the GitHub files for the app
-	GitHubURL string `json:"github_url" bson:"github_url" validate:"required"`
+	// GitHubURL is a link to the GitHub files for the app in the serverless apps registry repository
+	GitHubURL string `json:"github_url" bson:"github_url" validate:"required,url"`
 
 	// Deployment datan
 	Deployment AppDeployment `json:"deployment" bson:"deployment" validate:"required"`

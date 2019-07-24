@@ -34,38 +34,6 @@ Responses will always return JSON.
 
 Stored in the `apps` collection.  
 
-Schema:
-
-- `app_id` (String)
-- `name` (String)
-- `tagline` (String)
-- `description` (String)
-- `screenshot_urls` (List[String])
-- `logo_url` (String)
-- `tags` (List[String])
-- `verification_status` (String): One of `pending`, `verifying`, `good`, `bad`
-- `github_url` (String)
-- `deployment` (Object): Deployment details. Has keys:
-  - `resources` (List[String]): Each list entry holds the JSON for one
-	deployment resource
-  - `parameterized_resources` (List[String]): Same as `resources` except
-	values in `ConfigMap` and `Secret` resources are replaced with bash 
-	variable names from `parameters`
-  - `parameters` (List[Object]): Information about parameters in
-	`parameterized_resources`, has keys:
-     - `substitution` (String): Value which should be substituted for
-	   actual value
-	 - `display_name` (String): Name of variable to display to user
-	 - `default_value` (String): Value that existed before was parameterized
-	 - `requires_base64` (Boolean): Indicates if the value must be base64 
-		 encoded in the template
-  - `deploy_script` (String): Custom Bash deploy script for app		 
-- `version` (String)
-- `author` (Object)
-  - `name` (String)
-  - `email` (String)
-- `site_url` (String)
-
 # Endpoints
 [Godoc](https://godoc.org/github.com/kscout/serverless-registry-api/handlers)  
 
