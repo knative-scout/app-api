@@ -14,16 +14,16 @@ type Config struct {
 	// This should include any URL scheme, ports, paths, subdomains, ect.
 	ExternalURL url.URL `default:"http://localhost:5000" split_words:"true" required:"true"`
 
-	// SiteURL is the URL at which the website can be accessed.
+	// SiteURL is the URL at which the website (github.com/kscout/kscout.io) can be accessed.
 	// Must include a schema.
-	SiteURL url.URL `default:"https://kscout.io" split_words:"true" required:"true"`
+	SiteURL url.URL `default:"http://localhost:3000" split_words:"true" required:"true"`
 
 	// BotAPISecret is a secret value used to authenticate with the bot API
 	BotAPISecret string `split_words:"true" required:"true"`
 
 	// BotAPIURL is the URL of the bot API.
 	// Must include a schema.
-	BotAPIURL url.URL `default:"https://bot.kscout.io" split_words:"true" required:"true"`
+	BotAPIURL url.URL `default:"http://localhost:8000" split_words:"true" required:"true"`
 
 	// APIAddr is the API server's bind address
 	APIAddr string `default:":5000" split_words:"true" required:"true"`

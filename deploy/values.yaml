@@ -23,6 +23,12 @@ http:
     - key: externalURL
       value: "https://{{ .Values.defaultHost }}"
       envKey: APP_EXTERNAL_URL
+    - key: siteURL
+      value: "https://kscout.io"
+      envKey: APP_SITE_URL
+    - key: botAPIURL
+      value: "https://bot.kscout.io"
+      envKey: APP_BOT_API_URL
     - key: apiAddr
       value: ":{{ .Values.port }}"
       envKey: APP_API_ADDR
