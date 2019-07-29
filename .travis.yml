@@ -1,6 +1,5 @@
 language: go
 go:
-  - 1.12.5
   - 1.12.6
 go_import_path: github.com/kscout/serverless-registry-api
 services:
