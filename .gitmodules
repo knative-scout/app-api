@@ -1,6 +1,6 @@
 [submodule "deploy/charts/mongo"]
 	path = deploy/charts/mongo
-	url = git@github.com:kscout/mongo-chart.git
+	url = https://github.com/kscout/mongo-chart.git
 [submodule "deploy/charts/http"]
 	path = deploy/charts/http
-	url = git@github.com:kscout/http-service-chart.git
+	url = https://github.com/kscout/http-service-chart.git

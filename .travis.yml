@@ -2,11 +2,10 @@ language: go
 go:
   - 1.12.6
 go_import_path: github.com/kscout/serverless-registry-api
-git:
-  depth: 1
-  submodules: true
 services:
   - docker
+env:
+  - GO11MODULE=on
 before_install:
   - sudo apt-get install -y httpie
 jobs:
@@ -15,7 +14,7 @@ jobs:
       script: go test ./...
   deploy:
     - provider: script
-      script: make docker ENV=prod LOGIN=true GO11MODULE=on &> /dev/null
+      script: make docker ENV=prod LOGIN=true &> /dev/null
       on:
         branch: master
     - provider: script
