@@ -5,7 +5,8 @@
 	rm-deploy \
 	docker docker-build docker-push \
 	db db-cli \
-	ci-deploy
+	ci-deploy \
+	gh-deploy
 
 MAKE ?= make
 
@@ -21,6 +22,8 @@ DB_CONTAINER_NAME ?= kscout-serverless-registry-api-db
 DB_USER ?= kscout-dev
 DB_PASSWORD ?= secretpassword
 
+JP ?= jp
+
 # push local code to ENV deploy
 push: docker imagestream-tag
 
@@ -32,10 +35,12 @@ rollout:
 # rollout production
 rollout-prod:
 	${MAKE} rollout ENV=prod
+	${MAKE} gh-deploy ENV=production
 
 # rollout staging
 rollout-staging:
 	${MAKE} rollout ENV=staging
+	${MAKE} gh-deploy ENV=staging
 
 # import latest tag for ENV to imagestream
 imagestream-tag:
@@ -110,3 +115,19 @@ ci-deploy:
 	${MAKE} docker
 	${MAKE} deploy-prod
 	./deploy-gh-deploy-status.sh set-state success
+
+# create deployment status for current commit
+# The jp command is required.
+# STATE is the state of the deployment status, can be error, failure, inactive, queued, or success. Defaults to success.
+# REF is the GitHub reference of the code which is deployed, defaults to local HEAD's sha.
+# ENV is the environment. Defaults to production
+gh-deploy:
+	if [ -z "${MAKEFILE_GH_API_TOKEN}" ]; then echo "MAKEFILE_GH_API_TOKEN must be set" >&2; exit 1; fi
+
+	$(eval STATE ?= success)
+	$(eval REF ?= $(shell git rev-parse HEAD))
+	$(eval ENV ?= production)
+
+	$(eval id ?= $(shell curl -X POST -H "Authorization: bearer ${MAKEFILE_GH_API_TOKEN}" -d "{\"ref\": \"${REF}\", \"environment\": \"${ENV}\"}" "https://api.github.com/repos/kscout/${APP}/deployments" | ${JP} id))
+	curl -X POST -H "Authorization: bearer ${MAKEFILE_GH_API_TOKEN}" -d "{\"state\": \"${STATE}\"}" "https://api.github.com/repos/kscout/${APP}/deployments/${id}/statuses"
+

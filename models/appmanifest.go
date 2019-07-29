@@ -6,7 +6,10 @@ package models
 type AppManifestFile struct {
 	// Name to display to users
 	Name string `yaml:"name"`
-	
+
+	// HomepageURL is a link to the website for this app.
+	HomepageURL string `yaml:"homepageUrl"`
+
 	// Tagline is a short description of the app
 	Tagline string `yaml:"tagline"`
 
@@ -18,7 +21,4 @@ type AppManifestFile struct {
 
 	// Author is the person who created the app
 	Author ContactInfo `yaml:"author"`
-
-	// Maintainer is the person who will support the app
-	Maintainer string `yaml:"maintainer"`
 }

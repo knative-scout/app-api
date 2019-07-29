@@ -5,7 +5,10 @@ package models
 type App struct {
 	// Name to display to users
 	Name string `json:"name" bson:"name" validate:"required"`
-	
+
+	// HomepageURL is a link to the website for this app.
+	HomepageURL string `json:"homepage_url" bson:"homepage_url" validate:"required"`
+
 	// Tagline is a short description of the app
 	Tagline string `json:"tagline" bson:"tagline" validate:"required"`
 
@@ -28,14 +31,14 @@ type App struct {
 	ScreenshotURLs []string `json:"screenshot_urls" bson:"screenshot_urls"`
 
 	// LogoURL is a link to the app logo
-	LogoURL string `json:"logo_url" bson:"logo_url" validate:"required"`
+	LogoURL string `json:"logo_url" bson:"logo_url" validate:"required,url"`
 
 	// VerificationStatus indicates the stage of the verification process the app
 	// is currently in. Can be one of: "pending", "verifying", "good", "bad"
 	VerificationStatus string `json:"verification_status" bson:"verification_status" validate:"required"`
 
-	// GitHubURL is a link to the GitHub files for the app
-	GitHubURL string `json:"github_url" bson:"github_url" validate:"required"`
+	// GitHubURL is a link to the GitHub files for the app in the serverless apps registry repository
+	GitHubURL string `json:"github_url" bson:"github_url" validate:"required,url"`
 
 	// Deployment datan
 	Deployment AppDeployment `json:"deployment" bson:"deployment" validate:"required"`
