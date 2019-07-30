@@ -15,7 +15,6 @@ API which curates serverless applications.
   - [Configuration](#deploy-configuration)
   - [Deploy](#deploy)
   - [Staging Deployment](#staging-deployment)
-  - [GitHub Deployment Status](#github-deployment-status)
 
 # Overview
 See [DESIGN.md](DESIGN.md)
@@ -213,13 +212,7 @@ git submodule update --init --recursive
 Deploy to production:
 
 ```
-make deploy-prod
-```
-
-If this is the first time production has been deployed run:
-
-```
-make rollout-prod
+make deploy ENV=prod
 ```
 
 The `master` branch will automatically be deployed to the `prod` environment.  
@@ -230,26 +223,5 @@ Local code can be deployed to the staging environment.
 Spin up the staging environment if it doesn't exist already:
 
 ```
-make deploy-staging
-make rollout-staging
+make deploy ENV=staging
 ```
-
-Build local code and deploy to environment:
-
-```
-make push
-```
-
-## GitHub Deployment Status
-GitHub has 
-[a page](https://github.com/kscout/serverless-registry-api/deployments) which 
-tracks the commit currently deployed to an environment.
-
-To create a status for a deployment run:
-
-```
-make gh-deploy
-```
-
-You can optionally set the `STATE` and `REF` variable. See the target in the 
-`Makefile` for more details.
