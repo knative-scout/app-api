@@ -14,4 +14,4 @@ go_import_path: github.com/kscout/serverless-registry-api
 before_install:
   - sudo apt-get install -y httpie coreutils
 install: go mod download
-script: ./deploy/ci.sh
+script: which realpath
