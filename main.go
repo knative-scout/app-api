@@ -479,7 +479,7 @@ func main() {
 		baseHandler.GetChild("deploy-instructions"),
 	}).Methods("GET")
 
-	apiRouter.Handle("/nsearch", handlers.SmartSearchHandler{
+	apiRouter.Handle("/nsearch", handlers.NaturalSearchHandler{
 		baseHandler.GetChild("nsearch"),
 	}).Methods("GET")
 
