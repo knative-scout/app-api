@@ -3,14 +3,15 @@
 	imagestream-tag \
 	deploy deploy-prod deploy-staging \
 	rm-deploy \
-	docker docker-build docker-push \
+	container container-build container-push \
 	db db-cli \
 	gh-deploy
 
 MAKE ?= make
+CONTAINER_BIN ?= podman
 
 APP ?= serverless-registry-api
-DOCKER_TAG ?= kscout/${APP}:${ENV}-latest
+CONTAINER_TAG ?= kscout/${APP}:${ENV}-latest
 
 KUBE_LABELS ?= app=${APP},env=${ENV}
 KUBE_TYPES ?= dc,configmap,secret,deploy,statefulset,svc,route,is,pod,pvc
@@ -24,7 +25,7 @@ DB_PASSWORD ?= secretpassword
 JP ?= jp
 
 # push local code to ENV deploy
-push: docker imagestream-tag
+push: container imagestream-tag
 
 # rollout ENV
 rollout:
@@ -76,23 +77,23 @@ rm-deploy:
 		-o yaml \
 	| oc delete -f -
 
-# build and push docker image
-docker: docker-build docker-push
+# build and push container image
+container: container-build container-push
 
-# build docker image for ENV
-docker-build:
+# build container image for ENV
+container-build:
 	@if [ -z "${ENV}" ]; then echo "ENV must be set"; exit 1; fi
-	docker build -t ${DOCKER_TAG} .
+	${CONTAINER_BIN} build -t ${CONTAINER_TAG} .
 
-# push docker image for ENV
-docker-push:
+# push container image for ENV
+container-push:
 	@if [ -z "${ENV}" ]; then echo "ENV must be set"; exit 1; fi
-	docker push ${DOCKER_TAG}
+	${CONTAINER_BIN} push ${CONTAINER_TAG}
 
 # start MongoDB server in container
 db:
 	mkdir -p ${DB_DATA_DIR}
-	docker run \
+	${CONTAINER_BIN} run \
 		-it --rm --net host --name ${DB_CONTAINER_NAME} \
 		-v ${PWD}/${DB_DATA_DIR}:/data/db \
 		-e MONGO_INITDB_ROOT_USERNAME=${DB_USER} \
@@ -101,7 +102,7 @@ db:
 
 # runs mongo on shell
 db-cli:
-	docker run -it --rm --net host mongo:latest mongo -u ${DB_USER} -p ${DB_PASSWORD}
+	container run -it --rm --net host mongo:latest mongo -u ${DB_USER} -p ${DB_PASSWORD}
 
 # create deployment status for current commit
 # The jp command is required.
