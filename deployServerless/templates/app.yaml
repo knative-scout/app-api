@@ -1,0 +1,96 @@
+apiVersion: serving.knative.dev/v1alpha1
+kind: Service
+metadata:
+  name: registry-api
+  labels:
+    app: registry-api
+    env: prod
+spec:
+  runLatest:
+    configuration:
+      revisionTemplate:
+        spec:
+          containers:
+            - name: registry-api
+              image: kscout/serverless-registry-api:prod-latest
+              env:
+                - name: APP_EXTERNAL_URL
+                  valueFrom:
+                    configMapKeyRef:
+                      key: externalURL
+                      name: prod-serverless-registry-api-config
+                - name: APP_API_ADDR
+                  valueFrom:
+                    configMapKeyRef:
+                      key: apiAddr
+                      name: prod-serverless-registry-api-config
+                - name: APP_METRICS_ADDR
+                  valueFrom:
+                    configMapKeyRef:
+                      key: metricsAddr
+                      name: prod-serverless-registry-api-config
+                - name: APP_GH_PRIVATE_KEY_PATH
+                  valueFrom:
+                    configMapKeyRef:
+                      key: ghPrivateKeyPath
+                      name: prod-serverless-registry-api-config
+                - name: APP_GH_INTEGRATION_ID
+                  valueFrom:
+                    secretKeyRef:
+                      key: ghIntegrationID
+                      name: prod-serverless-registry-api-secret
+                - name: APP_GH_INSTALLATION_ID
+                  valueFrom:
+                    secretKeyRef:
+                      key: ghInstallationID
+                      name: prod-serverless-registry-api-secret
+                - name: APP_GH_WEBHOOK_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      key: ghWebhookSecret
+                      name: prod-serverless-registry-api-secret
+                - name: APP_BOT_API_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      key: botAPISecret
+                      name: prod-serverless-registry-api-secret
+                - name: APP_DB_USER
+                  valueFrom:
+                    configMapKeyRef:
+                      key: user
+                      name: prod-serverless-registry-api-mongo-config
+                - name: APP_DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      key: password
+                      name: prod-serverless-registry-api-mongo-creds
+                - name: APP_DB_NAME
+                  valueFrom:
+                    configMapKeyRef:
+                      key: dbName
+                      name: prod-serverless-registry-api-mongo-config
+                - name: APP_DB_HOST
+                  value: prod-registry-api-mongo
+              resources:
+                requests:
+                  memory: "150Mi"
+                  cpu: "300m"
+                limits:
+                  memory: "400Mi"
+                  cpu: "750m"
+              volumeMounts:
+                - mountPath: /mnt/secret
+                  name: app-secret
+                  readOnly: true
+              readinessProbe:
+                httpGet:
+                  path: /health
+                  scheme: HTTP
+              ports:
+                - containerPort: 5000
+                  protocol: TCP
+          volumes:
+            - name: app-secret
+              secret:
+                defaultMode: 420
+                secretName: prod-serverless-registry-api-secret

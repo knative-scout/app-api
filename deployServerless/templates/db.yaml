@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: prod-registry-api-mongo
+  labels:
+    app: registry-api
+    env: prod
+spec:
+  selector:
+    matchLabels:
+      app: registry-api
+      env: prod
+  serviceName: prod-registry-api-mongo
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: registry-api
+        env: prod
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:latest
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: prod-serverless-registry-api-mongo-config
+                  key: user
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: prod-serverless-registry-api-mongo-creds
+                  key: password
+            - name: MONGO_INITDB_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: prod-serverless-registry-api-mongo-config
+                  key: dbName
+          ports:
+            - name: mongo
+              containerPort: 27017
+          volumeMounts:
+            - name: mongo
+              mountPath: /data/db
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo
+      labels:
+        app: registry-api
+        env: prod
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prod-registry-api-mongo
+  labels:
+    app: registry-api
+    env: prod
+spec:
+  selector:
+    app: registry-api
+    env: prod
+  ports:
+    - port: 27017
+      name: mongo
+      targetPort: mongo
+      protocol: TCP
