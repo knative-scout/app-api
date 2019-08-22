@@ -23,7 +23,7 @@ type Config struct {
 
 	// BotAPIURL is the URL of the bot API.
 	// Must include a schema.
-	BotAPIURL url.URL `default:"http://localhost:8000" split_words:"true" required:"true"`
+	BotAPIURL url.URL `default:"http://localhost:8000" envconfig:"bot_api_url" required:"true"`
 
 	// APIAddr is the API server's bind address
 	APIAddr string `default:":5000" split_words:"true" required:"true"`
