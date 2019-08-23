@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prod-serverless-registry-api-mongo-config
+  labels:
+    app: serverless-registry-api
+    component: mongo
+    env: prod
+data:
+  dbName: prod-serverless-registry-api
+  user: prod-serverless-registry-api
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prod-serverless-registry-api-config
+  labels:
+    app: serverless-registry-api
+    component: app
+    env: prod
+data:
+  apiAddr: ':5000'
+  externalURL: 'https://api.kscout.io'
+  ghPrivateKeyPath: /mnt/secret/ghPrivateKey
+  metricsAddr: ':10921'
