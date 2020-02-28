@@ -34,7 +34,7 @@ func (h AppSearchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 
-	h.RespondJSON(w, http.StatusOK, resp)
+	h.RespondJSON(w, http.StatusMovedPermanently, resp)
 }
 
 

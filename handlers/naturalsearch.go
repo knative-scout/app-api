@@ -28,7 +28,7 @@ func (h NaturalSearchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if len(query) > 0 {
 		searchBson = append(searchBson, bson.E{
 			"$text",
-			bson.D{{"$search", query}},
+			bson.D{{"$search", "\\s*("+query+")"}},
 		})
 	}
 	if len(tags) > 0 {
